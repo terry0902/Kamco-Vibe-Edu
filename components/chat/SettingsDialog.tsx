@@ -3,14 +3,16 @@ import { isApiKeyFormatValid } from "@/lib/chat/types";
 
 type SettingsDialogProps = {
   apiKey: string;
+  keyRemembered: boolean;
   conversationCount: number;
-  onSaveApiKey: (apiKey: string) => void;
+  onSaveApiKey: (apiKey: string, remember: boolean) => void;
   onClearConversations: () => void;
   onClose: () => void;
 };
 
 export default function SettingsDialog({
   apiKey,
+  keyRemembered,
   conversationCount,
   onSaveApiKey,
   onClearConversations,
@@ -18,6 +20,7 @@ export default function SettingsDialog({
 }: SettingsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState(apiKey);
+  const [remember, setRemember] = useState(keyRemembered);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -31,13 +34,14 @@ export default function SettingsDialog({
       setStatus("API 키 형식이 올바르지 않습니다. 복사한 키를 확인해 주세요.");
       return;
     }
-    onSaveApiKey(trimmed);
+    onSaveApiKey(trimmed, remember);
     onClose();
   }
 
   function handleDeleteKey() {
     setDraft("");
-    onSaveApiKey("");
+    setRemember(false);
+    onSaveApiKey("", false);
     setStatus("API 키를 이 브라우저에서 삭제했습니다.");
   }
 
@@ -79,13 +83,27 @@ export default function SettingsDialog({
           placeholder="sk-로 시작하는 키"
           className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-base outline-none focus:border-zinc-500 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900"
         />
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            이 브라우저에 계속 저장
+            <span className="block text-xs text-zinc-600 dark:text-zinc-400">
+              끄면 이 탭에서만 기억하고, 탭을 닫으면 지워집니다.
+            </span>
+          </span>
+        </label>
         {status && (
           <p role="status" className="text-xs font-medium">
             {status}
           </p>
         )}
         <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
-          <li>키는 이 브라우저에만 저장됩니다. 공용 PC에서는 사용 후 삭제해 주세요.</li>
+          <li>키는 암호화 없이 브라우저에 보관됩니다. 공용 PC에서는 계속 저장을 켜지 마세요.</li>
           <li>
             답변을 만들 때 이 앱의 서버를 거쳐 OpenAI로 전달되며, 서버에 저장하지
             않습니다.

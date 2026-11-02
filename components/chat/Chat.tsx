@@ -54,7 +54,7 @@ async function requestAnswer(
 }
 
 export default function Chat() {
-  const { conversations, apiKey } = useChatStorage();
+  const { conversations, apiKey, keyRemembered } = useChatStorage();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -208,6 +208,7 @@ export default function Chat() {
       {settingsOpen && (
         <SettingsDialog
           apiKey={apiKey}
+          keyRemembered={keyRemembered}
           conversationCount={conversations.length}
           onSaveApiKey={saveApiKey}
           onClearConversations={handleClearConversations}
