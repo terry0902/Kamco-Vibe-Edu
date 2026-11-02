@@ -1,36 +1,44 @@
 "use client";
 
-// Design Ref: §1 화면 구성 — 대화는 서버에 저장하지 않고 브라우저 상태로만 둔다.
-import { useEffect, useRef, useState } from "react";
+// Design Ref: §1 화면 구성 — 대화와 API 키는 서버에 저장하지 않고 이 브라우저에만 둔다.
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toHistory, toTitle } from "@/lib/chat/conversations";
 import {
+  API_KEY_HEADER,
   chatResponseSchema,
   errorResponseSchema,
   isInputTooLong,
-  toHistoryMessage,
   type ChatMessage,
   type ChatResponse,
 } from "@/lib/chat/types";
 import AnswerCard, { ErrorCard } from "./AnswerCard";
 import ChatInput from "./ChatInput";
+import SettingsDialog from "./SettingsDialog";
+import Sidebar from "./Sidebar";
+import {
+  appendEntry,
+  clearConversations,
+  deleteConversation,
+  saveApiKey,
+  useChatStorage,
+} from "./useChatStorage";
 import WelcomeScreen from "./WelcomeScreen";
-
-type Entry =
-  | { id: number; type: "question"; text: string }
-  | { id: number; type: "answer"; response: ChatResponse }
-  | { id: number; type: "error"; message: string };
 
 type ChatResult =
   | { ok: true; response: ChatResponse }
-  | { ok: false; message: string };
+  | { ok: false; message: string; code?: string };
 
 const DEFAULT_ERROR_MESSAGE =
   "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.";
 
-async function requestAnswer(messages: ChatMessage[]): Promise<ChatResult> {
+async function requestAnswer(
+  messages: ChatMessage[],
+  apiKey: string,
+): Promise<ChatResult> {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", [API_KEY_HEADER]: apiKey },
       body: JSON.stringify({ messages }),
     });
     const body: unknown = await response.json();
@@ -38,19 +46,26 @@ async function requestAnswer(messages: ChatMessage[]): Promise<ChatResult> {
     if (response.ok) {
       return { ok: true, response: chatResponseSchema.parse(body) };
     }
-    return { ok: false, message: errorResponseSchema.parse(body).error.message };
+    const { error } = errorResponseSchema.parse(body);
+    return { ok: false, message: error.message, code: error.code };
   } catch {
     return { ok: false, message: DEFAULT_ERROR_MESSAGE };
   }
 }
 
 export default function Chat() {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const { conversations, apiKey } = useChatStorage();
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const nextId = useRef(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const entries = useMemo(
+    () => conversations.find((item) => item.id === activeId)?.entries ?? [],
+    [conversations, activeId],
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -59,95 +74,146 @@ export default function Chat() {
   async function handleSubmit() {
     const question = input.trim();
     if (question === "" || loading || isInputTooLong(input)) return;
+    if (!apiKey) {
+      setSettingsOpen(true);
+      return;
+    }
 
-    setEntries((current) => [
-      ...current,
-      { id: nextId.current++, type: "question", text: question },
-    ]);
+    const id = activeId ?? crypto.randomUUID();
+    const title = toTitle(question);
+    const messages: ChatMessage[] = [
+      ...toHistory(entries),
+      { role: "user", content: question },
+    ];
+
+    setActiveId(id);
+    appendEntry(id, title, { type: "question", text: question });
     setInput("");
     setLoading(true);
 
-    const userMessage: ChatMessage = { role: "user", content: question };
-    const result = await requestAnswer([...history, userMessage]);
+    const result = await requestAnswer(messages, apiKey);
 
     if (result.ok) {
-      setEntries((current) => [
-        ...current,
-        { id: nextId.current++, type: "answer", response: result.response },
-      ]);
-      // Design Ref: §2 이전 답변을 다시 보내는 규칙 — 오류가 난 질문은 대화 기록에 넣지 않는다.
-      setHistory((current) => [
-        ...current,
-        userMessage,
-        toHistoryMessage(result.response),
-      ]);
+      appendEntry(id, title, { type: "answer", response: result.response });
     } else {
-      setEntries((current) => [
-        ...current,
-        { id: nextId.current++, type: "error", message: result.message },
-      ]);
+      appendEntry(id, title, { type: "error", message: result.message });
       // 오류가 나면 질문을 입력창에 되돌려 다시 보낼 수 있게 한다.
       setInput(question);
+      if (result.code === "API_KEY_REQUIRED" || result.code === "API_KEY_INVALID") {
+        setSettingsOpen(true);
+      }
     }
     setLoading(false);
   }
 
   function handleNewChat() {
-    setEntries([]);
-    setHistory([]);
+    setActiveId(null);
     setInput("");
+    setSidebarOpen(false);
+  }
+
+  function handleSelect(id: string) {
+    setActiveId(id);
+    setInput("");
+    setSidebarOpen(false);
+  }
+
+  function handleDelete(id: string) {
+    if (!window.confirm("이 대화를 삭제할까요? 되돌릴 수 없습니다.")) return;
+    deleteConversation(id);
+    if (id === activeId) {
+      setActiveId(null);
+    }
+  }
+
+  function handleClearConversations() {
+    if (!window.confirm("대화를 모두 삭제할까요? 되돌릴 수 없습니다.")) return;
+    clearConversations();
+    setActiveId(null);
   }
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-3xl flex-col">
-      <header className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
-        <button
-          type="button"
-          onClick={handleNewChat}
-          disabled={loading}
-          className="shrink-0 rounded-md border border-zinc-300 px-3 py-1.5 text-sm disabled:opacity-40 dark:border-zinc-700"
+    <div className="flex h-dvh w-full">
+      <Sidebar
+        conversations={conversations}
+        activeId={activeId}
+        open={sidebarOpen}
+        disabled={loading}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={handleNewChat}
+        onSelect={handleSelect}
+        onDelete={handleDelete}
+        onOpenSettings={() => {
+          setSidebarOpen(false);
+          setSettingsOpen(true);
+        }}
+      />
+
+      <div className="mx-auto flex h-full min-w-0 max-w-3xl flex-1 flex-col">
+        <header className="flex items-center gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="대화 목록 열기"
+            className="shrink-0 rounded-md border border-zinc-300 px-2.5 py-1 text-sm md:hidden dark:border-zinc-700"
+          >
+            ☰
+          </button>
+          <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
+        </header>
+
+        <main
+          aria-live="polite"
+          className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
         >
-          새 대화
-        </button>
-      </header>
+          {entries.length === 0 && (
+            <WelcomeScreen
+              needsApiKey={!apiKey}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          )}
+          {entries.map((entry, index) => {
+            switch (entry.type) {
+              case "question":
+                return (
+                  <p
+                    key={index}
+                    className="max-w-[85%] self-end rounded-lg bg-zinc-200 px-3 py-2 text-sm leading-6 break-words whitespace-pre-wrap dark:bg-zinc-700"
+                  >
+                    {entry.text}
+                  </p>
+                );
+              case "answer":
+                return <AnswerCard key={index} response={entry.response} />;
+              case "error":
+                return <ErrorCard key={index} message={entry.message} />;
+            }
+          })}
+          {loading && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">찾는 중...</p>
+          )}
+          <div ref={bottomRef} />
+        </main>
 
-      <main
-        aria-live="polite"
-        className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
-      >
-        {entries.length === 0 && <WelcomeScreen />}
-        {entries.map((entry) => {
-          switch (entry.type) {
-            case "question":
-              return (
-                <p
-                  key={entry.id}
-                  className="max-w-[85%] self-end rounded-lg bg-zinc-200 px-3 py-2 text-sm leading-6 break-words whitespace-pre-wrap dark:bg-zinc-700"
-                >
-                  {entry.text}
-                </p>
-              );
-            case "answer":
-              return <AnswerCard key={entry.id} response={entry.response} />;
-            case "error":
-              return <ErrorCard key={entry.id} message={entry.message} />;
-          }
-        })}
-        {loading && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">찾는 중...</p>
-        )}
-        <div ref={bottomRef} />
-      </main>
+        <footer className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <ChatInput
+            value={input}
+            disabled={loading}
+            onChange={setInput}
+            onSubmit={handleSubmit}
+          />
+        </footer>
+      </div>
 
-      <footer className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <ChatInput
-          value={input}
-          disabled={loading}
-          onChange={setInput}
-          onSubmit={handleSubmit}
+      {settingsOpen && (
+        <SettingsDialog
+          apiKey={apiKey}
+          conversationCount={conversations.length}
+          onSaveApiKey={saveApiKey}
+          onClearConversations={handleClearConversations}
+          onClose={() => setSettingsOpen(false)}
         />
-      </footer>
+      )}
     </div>
   );
 }
