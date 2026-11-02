@@ -73,6 +73,7 @@ describe("checkFirstPass", () => {
           question: null,
           steps: [{ text: "로그를 삭제한다", caution: false }],
           sources: ["문서"],
+          isFollowUp: false,
           versions: [],
         },
         [{ name: "문서", date: "2026-09-14", body: "본문" }],

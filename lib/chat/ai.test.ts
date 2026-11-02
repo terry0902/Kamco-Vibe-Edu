@@ -20,6 +20,8 @@ const good = {
   question: null,
   steps: [{ text: "확인한다", caution: false }],
   sources: [name],
+  isFollowUp: false,
+  versions: [],
 };
 const parsed = (output_parsed: unknown) => ({ output_parsed });
 
@@ -69,12 +71,97 @@ describe("askAssistant", () => {
     expect(parse).toHaveBeenCalledTimes(2);
   });
 
+  describe("조치 결과 재입력", () => {
+    const history = [
+      { role: "user" as const, content: "nginx 502 에러" },
+      {
+        role: "assistant" as const,
+        content: "1. 상태를 확인한다\n2. 서비스를 재시작한다\n근거: 비공개 문서명",
+        kind: "manual" as const,
+      },
+      { role: "user" as const, content: "해봤는데 안 돼요" },
+    ];
+    const followUpNotFound = parsed({
+      status: "notInManual",
+      question: null,
+      steps: [],
+      sources: [],
+      isFollowUp: true,
+      versions: [],
+    });
+    const webAnswer = {
+      output_parsed: { found: true, steps: [{ text: "로그를 본다", caution: false }] },
+      output: [
+        {
+          type: "message",
+          content: [
+            {
+              type: "output_text",
+              annotations: [
+                { type: "url_citation", title: "문서", url: "https://example.com/a" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    it("매뉴얼에 다른 방법이 있으면 재입력 답변으로 표시한다", async () => {
+      parse.mockResolvedValue(parsed({ ...good, isFollowUp: true }));
+
+      await expect(askAssistant(history)).resolves.toMatchObject({
+        kind: "manual",
+        followUp: true,
+      });
+      expect(parse).toHaveBeenCalledTimes(1);
+    });
+
+    it("다른 방법이 없으면 안내한 단계를 빼도록 알려 검색한다", async () => {
+      parse.mockResolvedValueOnce(followUpNotFound).mockResolvedValueOnce(webAnswer);
+
+      await expect(askAssistant(history)).resolves.toMatchObject({
+        kind: "web",
+        followUp: true,
+      });
+      const request = parse.mock.calls[1][0];
+      expect(request.input).toEqual([
+        { role: "user", content: "nginx 502 에러" },
+        { role: "user", content: "해봤는데 안 돼요" },
+      ]);
+      expect(request.instructions).toContain("1. 상태를 확인한다");
+      expect(request.instructions).toContain("2. 서비스를 재시작한다");
+      expect(request.instructions).not.toContain("비공개 문서명");
+    });
+
+    it("인터넷에도 없으면 재입력 찾지 못함으로 답한다", async () => {
+      parse
+        .mockResolvedValueOnce(followUpNotFound)
+        .mockResolvedValueOnce({ ...webAnswer, output: [] });
+
+      await expect(askAssistant(history)).resolves.toEqual({
+        kind: "notFound",
+        followUp: true,
+      });
+    });
+
+    it("안내한 답변이 없으면 재입력으로 보지 않는다", async () => {
+      parse.mockResolvedValueOnce(followUpNotFound).mockResolvedValueOnce(webAnswer);
+
+      await expect(askAssistant(messages)).resolves.toMatchObject({
+        kind: "web",
+        followUp: false,
+      });
+      expect(parse.mock.calls[1][0].instructions).not.toContain("<excluded>");
+    });
+  });
+
   describe("인터넷 검색", () => {
     const notInManual = parsed({
       status: "notInManual",
       question: null,
       steps: [],
       sources: [],
+      isFollowUp: false,
       versions: [],
     });
     const webAnswer = {
@@ -113,6 +200,8 @@ describe("askAssistant", () => {
         { type: "web_search", search_context_size: "low" },
       ]);
       expect(request.tool_choice).toBe("required");
+      expect(request.max_tool_calls).toBe(2);
+      expect(request.reasoning).toEqual({ effort: "low" });
       expect(request.store).toBe(false);
     });
 

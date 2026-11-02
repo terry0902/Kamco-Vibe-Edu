@@ -17,6 +17,7 @@ const base: FirstPass = {
   question: null,
   steps: [step],
   sources: ["가"],
+  isFollowUp: false,
   versions: [],
 };
 const check = (answer: Partial<FirstPass>) =>
@@ -116,6 +117,19 @@ describe("checkFirstPass", () => {
     ],
   ])("문서 충돌의 %s 는 다시 요청한다", (_name, versions) => {
     expect(check({ status: "conflict", versions }).ok).toBe(false);
+  });
+
+  it("안내한 답변이 있을 때만 재입력으로 표시한다", () => {
+    const answer = { ...base, isFollowUp: true };
+    expect(checkFirstPass(answer, manuals, now, false, true)).toMatchObject({
+      response: { kind: "manual", followUp: true },
+    });
+    expect(checkFirstPass(answer, manuals, now, false, false)).toMatchObject({
+      response: { kind: "manual", followUp: false },
+    });
+    expect(
+      checkFirstPass({ ...answer, status: "notInManual" }, manuals, now, false, true),
+    ).toEqual({ ok: true, response: { kind: "notFound", followUp: true } });
   });
 
   it("되묻기 횟수 규칙을 적용한다", () => {
