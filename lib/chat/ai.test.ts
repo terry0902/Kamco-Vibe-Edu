@@ -69,6 +69,113 @@ describe("askAssistant", () => {
     expect(parse).toHaveBeenCalledTimes(2);
   });
 
+  describe("인터넷 검색", () => {
+    const notInManual = parsed({
+      status: "notInManual",
+      question: null,
+      steps: [],
+      sources: [],
+      versions: [],
+    });
+    const webAnswer = {
+      output_parsed: { found: true, steps: [{ text: "확인한다", caution: false }] },
+      output: [
+        { type: "web_search_call" },
+        {
+          type: "message",
+          content: [
+            {
+              type: "output_text",
+              annotations: [
+                { type: "url_citation", title: "문서", url: "https://example.com/a" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    it("매뉴얼에 없을 때만 웹 검색 도구를 주어 호출한다", async () => {
+      parse.mockResolvedValueOnce(notInManual).mockResolvedValueOnce(webAnswer);
+
+      const response = await askAssistant(messages);
+
+      expect(response).toEqual({
+        kind: "web",
+        steps: [{ text: "확인한다", caution: false }],
+        links: [{ title: "문서", url: "https://example.com/a" }],
+        followUp: false,
+      });
+      expect(parse).toHaveBeenCalledTimes(2);
+      expect(parse.mock.calls[0][0].tools).toBeUndefined();
+      const request = parse.mock.calls[1][0];
+      expect(request.tools).toEqual([
+        { type: "web_search", search_context_size: "low" },
+      ]);
+      expect(request.tool_choice).toBe("required");
+      expect(request.store).toBe(false);
+    });
+
+    it.each([
+      ["매뉴얼 답변", parsed(good)],
+      [
+        "되묻기",
+        parsed({ ...good, status: "clarify", question: "질문", steps: [], sources: [] }),
+      ],
+    ])("%s 이면 검색하지 않는다", async (_name, answer) => {
+      parse.mockResolvedValue(answer);
+
+      await askAssistant(messages);
+
+      expect(parse).toHaveBeenCalledTimes(1);
+    });
+
+    it("이전 답변과 지난 증상을 빼고 현재 증상의 사용자 메시지만 보낸다", async () => {
+      parse.mockResolvedValueOnce(notInManual).mockResolvedValueOnce(webAnswer);
+
+      await askAssistant([
+        { role: "user", content: "지난 증상" },
+        { role: "assistant", content: "1. 매뉴얼 조치", kind: "manual" },
+        { role: "user", content: "이상해요" },
+        { role: "assistant", content: "어느 장비인가요?", kind: "clarify" },
+        { role: "user", content: "[호스트명]에서 Redis 오류" },
+      ]);
+
+      const request = parse.mock.calls[1][0];
+      expect(request.input).toEqual([
+        { role: "user", content: "이상해요" },
+        { role: "user", content: "[호스트명]에서 Redis 오류" },
+      ]);
+      expect(request.instructions).not.toContain("<manuals>");
+    });
+
+    it("출처가 없으면 다시 요청하지 않고 찾지 못함으로 답한다", async () => {
+      parse
+        .mockResolvedValueOnce(notInManual)
+        .mockResolvedValueOnce({ ...webAnswer, output: [] });
+
+      await expect(askAssistant(messages)).resolves.toEqual({
+        kind: "notFound",
+        followUp: false,
+      });
+      expect(parse).toHaveBeenCalledTimes(2);
+    });
+
+    it("규칙을 어기면 1번 다시 요청한다", async () => {
+      parse
+        .mockResolvedValueOnce(notInManual)
+        .mockResolvedValueOnce({
+          ...webAnswer,
+          output_parsed: { found: true, steps: [] },
+        })
+        .mockResolvedValueOnce(webAnswer);
+
+      await expect(askAssistant(messages)).resolves.toMatchObject({ kind: "web" });
+      expect(parse).toHaveBeenCalledTimes(3);
+      expect(parse.mock.calls[2][0].instructions).toContain("직전 답변이 규칙을 어겼다");
+    });
+  });
+
   it("보관을 끄고 가린 대화와 매뉴얼을 보낸다", async () => {
     parse.mockResolvedValue(parsed(good));
 
