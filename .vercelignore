@@ -1,0 +1,13 @@
+# 비밀 값은 Vercel 환경 변수로만 등록한다.
+.env*
+
+# 배포에 필요 없는 파일
+.bkit
+.claude
+.git
+.next
+node_modules
+tests
+trash-can
+*.test.ts
+vitest.config.mts
