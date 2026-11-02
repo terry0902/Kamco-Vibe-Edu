@@ -115,10 +115,10 @@ export default function Chat() {
         aria-live="polite"
         className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
       >
-        {/* 작업 8과 14에서 매뉴얼과 인터넷 검색을 연결하면 이 안내를 지운다. */}
+        {/* 작업 14에서 인터넷 검색을 연결하면 이 안내를 지운다. */}
         <p className="rounded-md bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-          아직 매뉴얼과 인터넷 검색이 연결되지 않아, 조치 방법 없이 되묻거나 찾지
-          못함으로만 답합니다.
+          아직 인터넷 검색이 연결되지 않아, 매뉴얼에 없는 내용은 찾지
+          못함으로 답합니다.
         </p>
         {entries.map((entry) => {
           switch (entry.type) {
