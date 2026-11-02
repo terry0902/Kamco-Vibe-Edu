@@ -2,7 +2,7 @@
 
 // Design Ref: §1 화면 구성 — 대화는 서버에 저장하지 않고 브라우저 상태로만 둔다.
 import { useEffect, useRef, useState } from "react";
-import type { ChatResponse } from "@/lib/chat/types";
+import { isInputTooLong, type ChatResponse } from "@/lib/chat/types";
 import AnswerCard, { ErrorCard } from "./AnswerCard";
 import ChatInput from "./ChatInput";
 import { MOCK_RESULTS } from "./mockAnswers";
@@ -28,7 +28,7 @@ export default function Chat() {
 
   function handleSubmit() {
     const question = input.trim();
-    if (question === "" || loading) return;
+    if (question === "" || loading || isInputTooLong(input)) return;
 
     setEntries((current) => [
       ...current,
