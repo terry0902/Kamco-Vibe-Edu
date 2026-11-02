@@ -6,10 +6,16 @@ import { chatResponseSchema, type ChatResponse } from "./types";
 
 // OpenAI의 형식 지정은 모든 항목을 필수로 요구하므로, 쓰지 않는 값은 null이나 빈 배열로 받는다.
 export const firstPassSchema = z.object({
-  status: z.enum(["answer", "clarify", "escalate", "notInManual"]),
+  status: z.enum(["answer", "conflict", "clarify", "escalate", "notInManual"]),
   question: z.string().nullable(),
   steps: z.array(z.object({ text: z.string(), caution: z.boolean() })),
   sources: z.array(z.string()),
+  versions: z.array(
+    z.object({
+      name: z.string(),
+      steps: z.array(z.object({ text: z.string(), caution: z.boolean() })),
+    }),
+  ),
 });
 
 export type FirstPass = z.infer<typeof firstPassSchema>;
@@ -54,6 +60,30 @@ function buildResponse(
         followUp: false,
       };
     }
+    // Design Ref: §1 답변 카드 종류 — 문서 충돌에도 단계 수 제한과 "주의" 표시를 적용한다.
+    case "conflict": {
+      const versions = answer.versions.filter(
+        (version, index, all) =>
+          all.findIndex((other) => other.name === version.name) === index,
+      );
+      const unknownSources = versions
+        .map((version) => version.name)
+        .filter((name) => manuals.every((manual) => manual.name !== name));
+      if (unknownSources.length > 0) {
+        return { unknownSources };
+      }
+      return {
+        kind: "conflict",
+        versions: versions.flatMap((version) =>
+          manuals
+            .filter((manual) => manual.name === version.name)
+            .map((manual) => ({
+              ...toManualSource(manual, now),
+              steps: applyCaution(version.steps),
+            })),
+        ),
+      };
+    }
     case "clarify":
       return { kind: "clarify", question: answer.question ?? "" };
     case "escalate":
@@ -84,7 +114,7 @@ export function checkFirstPass(
   if ("unknownSources" in response) {
     return {
       ok: false,
-      reason: `sources에 매뉴얼에 없는 문서명을 썼다: ${response.unknownSources.join(", ")}. manual의 name을 그대로 쓴다.`,
+      reason: `매뉴얼에 없는 문서명을 썼다: ${response.unknownSources.join(", ")}. manual의 name을 그대로 쓴다.`,
     };
   }
 
@@ -93,7 +123,7 @@ export function checkFirstPass(
     return {
       ok: false,
       reason:
-        'status가 "answer"이면 steps는 1~5단계, sources는 1~3개로 쓰고, "clarify"이면 question을 비우지 않는다.',
+        'status가 "answer"이면 steps는 1~5단계, sources는 1~3개로 쓰고, "conflict"이면 versions에 서로 다른 문서 2개 이상을 각각 1~5단계로 쓰고, "clarify"이면 question을 비우지 않는다.',
     };
   }
   return { ok: true, response: parsed.data };

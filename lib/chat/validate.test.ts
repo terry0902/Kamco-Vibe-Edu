@@ -17,6 +17,7 @@ const base: FirstPass = {
   question: null,
   steps: [step],
   sources: ["가"],
+  versions: [],
 };
 const check = (answer: Partial<FirstPass>) =>
   checkFirstPass({ ...base, ...answer }, manuals, now);
@@ -66,6 +67,69 @@ describe("checkFirstPass", () => {
       ok: false,
       reason: expect.stringContaining("지어낸 문서"),
     });
+  });
+
+  it("문서 충돌에 날짜를 붙이고 빠진 주의 표시를 채운다", () => {
+    const versions = [
+      { name: "가", steps: [{ text: "서버를 종료한다", caution: false }] },
+      { name: "옛 문서", steps: [step] },
+    ];
+    expect(check({ status: "conflict", versions })).toEqual({
+      ok: true,
+      response: {
+        kind: "conflict",
+        versions: [
+          {
+            name: "가",
+            date: "2026-09-14",
+            outdated: false,
+            steps: [{ text: "서버를 종료한다", caution: true }],
+          },
+          { name: "옛 문서", date: "2025-02-18", outdated: true, steps: [step] },
+        ],
+      },
+    });
+  });
+
+  it.each([
+    ["문서 1개", [{ name: "가", steps: [step] }]],
+    [
+      "같은 문서 2개",
+      [
+        { name: "가", steps: [step] },
+        { name: "가", steps: [step] },
+      ],
+    ],
+    [
+      "6단계",
+      [
+        { name: "가", steps: Array(6).fill(step) },
+        { name: "나", steps: [step] },
+      ],
+    ],
+    [
+      "없는 문서명",
+      [
+        { name: "가", steps: [step] },
+        { name: "지어낸 문서", steps: [step] },
+      ],
+    ],
+  ])("문서 충돌의 %s 는 다시 요청한다", (_name, versions) => {
+    expect(check({ status: "conflict", versions }).ok).toBe(false);
+  });
+
+  it("되묻기 횟수 규칙을 적용한다", () => {
+    const clarify = { ...base, status: "clarify" as const, question: "질문" };
+    expect(checkFirstPass(clarify, manuals, now, true)).toEqual({
+      ok: true,
+      response: { kind: "escalate" },
+    });
+    expect(
+      checkFirstPass({ ...base, status: "escalate" }, manuals, now, true),
+    ).toEqual({ ok: true, response: { kind: "escalate" } });
+    expect(checkFirstPass({ ...base, status: "escalate" }, manuals, now).ok).toBe(
+      false,
+    );
   });
 
   it("되묻기와 매뉴얼에 없음을 변환한다", () => {
