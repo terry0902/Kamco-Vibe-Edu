@@ -4,11 +4,14 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { loadManuals, type Manual } from "./manuals";
 import type { ChatMessage, ChatResponse } from "./types";
-import { firstPassSchema, toChatResponse } from "./validate";
+import { checkFirstPass, firstPassSchema, type FirstPass } from "./validate";
 
 const DEFAULT_MODEL = "gpt-6-luna";
 const MAX_OUTPUT_TOKENS = 1500;
-const REQUEST_TIMEOUT_MS = 50_000;
+// 재요청을 포함해도 route.ts의 maxDuration 안에 끝나도록 정한 값이다.
+const REQUEST_TIMEOUT_MS = 25_000;
+const MAX_ATTEMPTS = 2;
+const INVALID_FORMAT_REASON = "답변이 정해진 JSON 형식이 아니었다.";
 
 function buildInstructions(manuals: Manual[]): string {
   const manualBlocks = manuals
@@ -37,23 +40,56 @@ ${manualBlocks}
 </manuals>`;
 }
 
+async function requestFirstPass(
+  client: OpenAI,
+  instructions: string,
+  messages: ChatMessage[],
+): Promise<FirstPass | null> {
+  try {
+    const result = await client.responses.parse({
+      model: process.env.OPENAI_MODEL ?? DEFAULT_MODEL,
+      store: false,
+      max_output_tokens: MAX_OUTPUT_TOKENS,
+      instructions,
+      input: messages.map(({ role, content }) => ({ role, content })),
+      text: { format: zodTextFormat(firstPassSchema, "first_pass") },
+    });
+    return result.output_parsed;
+  } catch (error) {
+    // 서비스 오류는 그대로 올리고, 답변이 잘렸거나 형식이 틀린 경우만 재요청 대상으로 둔다.
+    if (error instanceof OpenAI.APIError) {
+      throw error;
+    }
+    return null;
+  }
+}
+
 export async function askAssistant(
   messages: ChatMessage[],
 ): Promise<ChatResponse> {
-  const client = new OpenAI({ timeout: REQUEST_TIMEOUT_MS, maxRetries: 1 });
+  const client = new OpenAI({ timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
   const manuals = loadManuals();
+  const instructions = buildInstructions(manuals);
+  let violation = "";
 
-  const result = await client.responses.parse({
-    model: process.env.OPENAI_MODEL ?? DEFAULT_MODEL,
-    store: false,
-    max_output_tokens: MAX_OUTPUT_TOKENS,
-    instructions: buildInstructions(manuals),
-    input: messages.map(({ role, content }) => ({ role, content })),
-    text: { format: zodTextFormat(firstPassSchema, "first_pass") },
-  });
+  // Design Ref: §2 답변 검사 — 규칙을 어기면 1번 다시 요청하고, 내용을 잘라 내지 않는다.
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const answer = await requestFirstPass(
+      client,
+      violation
+        ? `${instructions}\n\n직전 답변이 규칙을 어겼다. ${violation} 규칙에 맞게 다시 답한다.`
+        : instructions,
+      messages,
+    );
+    const check = answer
+      ? checkFirstPass(answer, manuals, new Date())
+      : ({ ok: false, reason: INVALID_FORMAT_REASON } as const);
 
-  if (!result.output_parsed) {
-    throw new Error("AI 답변 형식 오류");
+    if (check.ok) {
+      return check.response;
+    }
+    violation = check.reason;
   }
-  return toChatResponse(result.output_parsed, manuals, new Date());
+
+  throw new Error("AI 답변 규칙 위반");
 }
