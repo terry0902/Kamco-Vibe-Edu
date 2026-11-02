@@ -63,9 +63,10 @@ npm run dev            # 개발 서버 (http://localhost:3000)
 npm run build          # 프로덕션 빌드
 npm run lint           # ESLint
 npx tsc --noEmit       # 타입 검사
+npm test               # 자동 테스트 (Vitest)
 ```
 
-테스트 러너(Vitest)는 아직 설치되어 있지 않다.
+자동 테스트는 `lib`와 `app` 아래의 `*.test.ts` 파일이 대상이다.
 
 ## Next.js 주의사항
 
@@ -110,7 +111,7 @@ manuals/                샘플 매뉴얼 (문서명과 날짜를 포함)
 
 - `main`에서 직접 작업하지 않고, 작업용 브랜치(예: `feature/practice`)에서 작업한다.
 - 검증 루프의 커밋은 작업용 브랜치에 남긴다.
-- `main`으로의 병합은 사용자가 지시할 때만 한다.
+- 검증 루프를 통과한 작업용 브랜치는 사용자에게 묻지 않고 `main`에 병합한다. 푸시는 요청받았을 때만 한다.
 
 ## 작업 방식
 
