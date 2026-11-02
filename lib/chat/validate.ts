@@ -93,6 +93,64 @@ function buildResponse(
   }
 }
 
+export const secondPassSchema = z.object({
+  found: z.boolean(),
+  steps: z.array(z.object({ text: z.string(), caution: z.boolean() })),
+});
+
+export type SecondPass = z.infer<typeof secondPassSchema>;
+export type Citation = { title: string; url: string };
+
+const INLINE_CITATION = /\s*\(?\[[^\]]*\]\([^)\s]*\)\)?/g;
+
+function toLinks(citations: Citation[]): Citation[] {
+  const links = new Map<string, Citation>();
+  for (const citation of citations) {
+    try {
+      const url = new URL(citation.url);
+      url.searchParams.delete("utm_source");
+      links.set(url.href, {
+        title: citation.title || url.hostname,
+        url: url.href,
+      });
+    } catch {
+      // 주소로 해석되지 않는 인용은 출처로 인정하지 않는다.
+    }
+  }
+  return [...links.values()];
+}
+
+// Design Ref: §2 답변 검사 — 출처는 응답의 url_citation만 인정하고, 없으면 찾지 못함으로 처리한다.
+export function checkSecondPass(
+  answer: SecondPass,
+  citations: Citation[],
+): AnswerCheck {
+  const links = toLinks(citations);
+  if (!answer.found || links.length === 0) {
+    return { ok: true, response: { kind: "notFound", followUp: false } };
+  }
+
+  const parsed = chatResponseSchema.safeParse({
+    kind: "web",
+    steps: applyCaution(
+      answer.steps.map((step) => ({
+        ...step,
+        text: step.text.replace(INLINE_CITATION, "").trim(),
+      })),
+    ),
+    links,
+    followUp: false,
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      reason:
+        "steps는 비어 있지 않은 1~5단계로 쓰고, 서로 다른 http 또는 https 페이지를 1~3개만 인용한다.",
+    };
+  }
+  return { ok: true, response: parsed.data };
+}
+
 export function checkFirstPass(
   answer: FirstPass,
   manuals: Manual[],

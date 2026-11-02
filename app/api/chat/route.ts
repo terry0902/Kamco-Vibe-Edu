@@ -10,7 +10,8 @@ import {
   type ErrorResponse,
 } from "@/lib/chat/types";
 
-export const maxDuration = 60;
+// 매뉴얼 호출과 웹 검색 호출을 각각 1번씩 재요청해도 끝날 수 있는 시간이다.
+export const maxDuration = 110;
 
 const ERRORS: Record<ErrorCode, { status: number; message: string }> = {
   INPUT_TOO_LONG: {
