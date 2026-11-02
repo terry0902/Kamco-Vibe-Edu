@@ -18,7 +18,8 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 function StepText({ text }: { text: string }) {
   const parts = text.split("`");
   if (parts.length % 2 === 0) {
-    return text;
+    // 짝이 맞지 않는 백틱은 코드 구간을 알 수 없으므로 기호만 뺀다.
+    return text.replaceAll("`", "");
   }
   return parts.map((part, index) =>
     index % 2 === 1 ? (

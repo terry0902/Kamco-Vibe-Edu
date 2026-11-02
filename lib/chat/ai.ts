@@ -32,11 +32,13 @@ function buildInstructions(manuals: Manual[]): string {
   - steps에 조치를 순서대로 최대 5단계로 쓰고, 매뉴얼의 명령은 그대로 옮긴다.
   - 재부팅, 서비스 중지·재시작, 삭제, 포맷, 설정 변경에 해당하는 단계는 caution을 true로, 나머지는 false로 한다.
   - sources에 실제로 근거로 쓴 문서의 name을 그대로 1~3개 쓴다.
+- 같은 증상에 대해 여러 문서의 기준이나 절차가 서로 다르면, 어느 쪽을 적용할지 되묻거나 직접 고르지 말고 status를 "conflict"로 한다.
+  - versions에 각 문서의 name을 그대로 쓰고, steps에 그 문서의 조치를 최대 5단계로 쓴다. caution은 위와 같다.
 - 직접 다루는 내용이 없으면 비슷한 주제에서 끌어오지 말고 status를 "notInManual"로 한다.
 - 증상이나 에러를 특정할 수 없을 만큼 입력이 모호하면 status를 "clarify"로 하고, question에 필요한 정보를 묻는 한국어 질문 1개를 쓴다.
 - 입력이 매뉴얼에서 다루지 않는 주제임을 알 수 있으면 되묻지 말고 status를 "notInManual"로 한다.
 - 이전 대화와 다른 증상을 입력하면 현재 입력만 기준으로 판단한다.
-- 쓰지 않는 항목은 question은 null, steps와 sources는 빈 배열로 한다.
+- 쓰지 않는 항목은 question은 null, steps와 sources와 versions는 빈 배열로 한다.
 - 입력의 [IP], [호스트명], [계정], [비밀번호], [이메일], [전화번호]는 가려진 값이다. 원래 값을 묻거나 추측하지 않는다.
 
 <manuals>
