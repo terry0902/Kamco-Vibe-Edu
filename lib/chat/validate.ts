@@ -18,6 +18,17 @@ export type AnswerCheck =
   | { ok: true; response: ChatResponse }
   | { ok: false; reason: string };
 
+// Design Ref: §2 "주의" 판단 낱말 — AI가 빠뜨린 표시를 채운다. 과하게 붙는 쪽은 허용한다.
+const CAUTION_PATTERN =
+  /재부팅|재기동|리부트|중지|정지|종료|재시작|삭제|지[우운워]|제거|포맷|초기화|설정\s*파일|설정\S*\s*(?:변경|수정|바꾸|바꾼|바꿔)|\b(?:reboot|shutdown|stop|restart|kill|delete|drop|truncate|format|mkfs|wipe|sysctl|chmod|chown|config)|(?:^|[\s`])rm\s/i;
+
+export function applyCaution(steps: FirstPass["steps"]): FirstPass["steps"] {
+  return steps.map((step) => ({
+    ...step,
+    caution: step.caution || CAUTION_PATTERN.test(step.text),
+  }));
+}
+
 function buildResponse(
   answer: FirstPass,
   manuals: Manual[],
@@ -38,7 +49,7 @@ function buildResponse(
       }
       return {
         kind: "manual",
-        steps: answer.steps,
+        steps: applyCaution(answer.steps),
         sources: known.map((manual) => toManualSource(manual, now)),
         followUp: false,
       };
