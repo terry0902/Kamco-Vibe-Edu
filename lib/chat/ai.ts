@@ -226,8 +226,9 @@ function askWeb(
 
 export async function askAssistant(
   messages: ChatMessage[],
+  apiKey: string,
 ): Promise<ChatResponse> {
-  const client = new OpenAI({ timeout: MANUAL_TIMEOUT_MS, maxRetries: 0 });
+  const client = new OpenAI({ apiKey, timeout: MANUAL_TIMEOUT_MS, maxRetries: 0 });
 
   const manualAnswer = await askManuals(client, messages);
   // Design Ref: §2 흐름의 원칙 — 검색 여부는 서버가 정하며, "매뉴얼에 없음"일 때만 웹 검색 도구를 준다.

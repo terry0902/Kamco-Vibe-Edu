@@ -5,11 +5,13 @@ import { POST } from "./route";
 vi.mock("@/lib/chat/ai", () => ({ askAssistant: vi.fn() }));
 
 const ask = vi.mocked(askAssistant);
+const API_KEY = "sk-test-key-0000000000000000";
 
-function send(body: unknown) {
+function send(body: unknown, headers: HeadersInit = { "x-openai-api-key": API_KEY }) {
   return POST(
     new Request("http://localhost/api/chat", {
       method: "POST",
+      headers,
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
   );
@@ -28,6 +30,31 @@ describe("POST /api/chat", () => {
     ask.mockReset();
     ask.mockResolvedValue({ kind: "notFound", followUp: false });
     vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it.each([
+    ["헤더 없음", {}],
+    ["빈 키", { "x-openai-api-key": "   " }],
+    ["너무 짧은 키", { "x-openai-api-key": "short" }],
+    ["공백이 든 키", { "x-openai-api-key": "sk-test key 000000000000000" }],
+  ])("%s 이면 AI를 호출하지 않고 키를 요구한다", async (_name, headers) => {
+    await expectError(
+      await send({ messages: [user("질문")] }, headers),
+      401,
+      "API_KEY_REQUIRED",
+    );
+  });
+
+  it("OpenAI가 키를 거절하면 키 확인을 안내하고 로그에 키를 남기지 않는다", async () => {
+    ask.mockRejectedValue(
+      Object.assign(new Error(`Incorrect API key: ${API_KEY}`), { status: 401 }),
+    );
+    const response = await send({ messages: [user("질문")] });
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.error.code).toBe("API_KEY_INVALID");
+    expect(JSON.stringify(body)).not.toContain(API_KEY);
+    expect(vi.mocked(console.error).mock.calls.flat().join(" ")).not.toContain(API_KEY);
   });
 
   it("정상 입력에 답변을 돌려준다", async () => {
@@ -97,7 +124,8 @@ describe("POST /api/chat", () => {
         user("password=abc123"),
       ],
     });
-    expect(ask).toHaveBeenCalledWith([
+    expect(ask).toHaveBeenCalledWith(
+      [
       { role: "user", content: "[IP] 접속 안 됨" },
       {
         role: "assistant",
@@ -105,7 +133,9 @@ describe("POST /api/chat", () => {
         kind: "clarify",
       },
       { role: "user", content: "password=[비밀번호]" },
-    ]);
+    ],
+      API_KEY,
+    );
   });
 
   it("형식이 틀린 AI 답변은 오류로 처리한다", async () => {
