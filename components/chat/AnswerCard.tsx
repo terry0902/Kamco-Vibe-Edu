@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import type { ChatResponse, ManualSource, Step } from "@/lib/chat/types";
 
-const FOLLOW_UP_NOTICE = "그래도 해결되지 않으면 선임에게 문의하세요";
+const FOLLOW_UP_NOTICE = "그래도 해결되지 않으면 질문을 재검토 해주세요.";
 const WEB_NOTICE = "매뉴얼 외 정보이므로 검토 후 적용하세요";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
@@ -138,7 +138,7 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
     case "escalate":
       return (
         <Card title="선임 문의">
-          <p>증상을 특정하지 못했습니다. 선임에게 문의해 주세요.</p>
+          <p>증상을 특정하지 못했습니다. 질문을 재검토 해주세요.</p>
         </Card>
       );
     case "web":
@@ -175,7 +175,7 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
       return (
         <Card title="찾지 못함">
           <MissingLabel followUp={response.followUp} />
-          <p>인터넷에서도 찾지 못했습니다. 선임에게 문의해 주세요.</p>
+          <p>인터넷에서도 찾지 못했습니다. 질문을 재검토 해주세요.</p>
         </Card>
       );
   }
