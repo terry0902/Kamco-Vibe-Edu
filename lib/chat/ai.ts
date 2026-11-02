@@ -3,7 +3,7 @@ import "server-only";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { loadManuals, type Manual } from "./manuals";
-import type { ChatMessage, ChatResponse } from "./types";
+import type { AnswerKind, ChatMessage, ChatResponse } from "./types";
 import {
   checkFirstPass,
   checkSecondPass,
@@ -15,10 +15,15 @@ import {
 
 const DEFAULT_MODEL = "gpt-6-luna";
 const MAX_OUTPUT_TOKENS = 1500;
+// 추론에 토큰을 다 써서 답변이 잘리는 일을 막고, 호출당 비용이 드는 검색 횟수를 제한한다.
+const WEB_MAX_OUTPUT_TOKENS = 2500;
+const WEB_MAX_SEARCHES = 2;
 // 1차와 2차를 각각 1번씩 재요청해도 route.ts의 maxDuration 안에 끝나도록 정한 값이다.
-const REQUEST_TIMEOUT_MS = 25_000;
+const MANUAL_TIMEOUT_MS = 20_000;
+const WEB_TIMEOUT_MS = 35_000;
 const MAX_ATTEMPTS = 2;
 const INVALID_FORMAT_REASON = "답변이 정해진 JSON 형식이 아니었다.";
+const FOLLOW_UP_TARGETS: AnswerKind[] = ["manual", "conflict", "web"];
 const ALREADY_CLARIFIED_NOTE = `직전 답변에서 이미 되물었으므로 다시 되묻지 않는다.
 지금까지의 정보로 답할 수 있으면 "answer", 매뉴얼에 없는 주제임을 알 수 있으면 "notInManual", 여전히 증상을 특정할 수 없으면 status를 "escalate"로 한다.`;
 
@@ -56,6 +61,8 @@ function buildInstructions(manuals: Manual[]): string {
 - 증상이나 에러를 특정할 수 없을 만큼 입력이 모호하면 status를 "clarify"로 하고, question에 필요한 정보를 묻는 한국어 질문 1개를 쓴다.
 - 입력이 매뉴얼에서 다루지 않는 주제임을 알 수 있으면 되묻지 말고 status를 "notInManual"로 한다.
 - 이전 대화와 다른 증상을 입력하면 현재 입력만 기준으로 판단한다.
+- 입력이 직전에 안내한 조치의 결과(해결되지 않음, 더 나빠짐 등)를 알리는 것이면 isFollowUp을 true로, 아니면 false로 한다.
+  - isFollowUp이 true이면 이미 안내한 방법은 빼고 매뉴얼에서 다른 방법을 찾아 "answer"로 답한다. 다른 방법이 없으면 되묻지 말고 "notInManual"로 한다.
 - 쓰지 않는 항목은 question은 null, steps와 sources와 versions는 빈 배열로 한다.
 - 입력의 [IP], [호스트명], [계정], [비밀번호], [이메일], [전화번호]는 가려진 값이다. 원래 값을 묻거나 추측하지 않는다.
 
@@ -105,6 +112,9 @@ function askManuals(
   const previous = messages.at(-2);
   const alreadyClarified =
     previous?.role === "assistant" && previous.kind === "clarify";
+  const canFollowUp =
+    previous?.role === "assistant" &&
+    FOLLOW_UP_TARGETS.includes(previous.kind);
   const instructions = alreadyClarified
     ? `${buildInstructions(manuals)}\n\n${ALREADY_CLARIFIED_NOTE}`
     : buildInstructions(manuals);
@@ -121,7 +131,13 @@ function askManuals(
       }),
     );
     return result?.output_parsed
-      ? checkFirstPass(result.output_parsed, manuals, new Date(), alreadyClarified)
+      ? checkFirstPass(
+          result.output_parsed,
+          manuals,
+          new Date(),
+          alreadyClarified,
+          canFollowUp,
+        )
       : { ok: false, reason: INVALID_FORMAT_REASON };
   });
 }
@@ -152,8 +168,33 @@ function extractCitations(output: OpenAI.Responses.ResponseOutputItem[]): Citati
   );
 }
 
-function askWeb(client: OpenAI, messages: ChatMessage[]): Promise<ChatResponse> {
-  const input = currentSymptomMessages(messages).map(({ role, content }) => ({
+// Design Ref: §2 2차 호출에 보내는 내용 — 재입력일 때만 이미 안내한 단계 문장을 제외 대상으로 보낸다. 문서명과 출처는 빼고 보낸다.
+function buildFollowUpNote(messages: ChatMessage[]): string {
+  const guidedSteps = messages
+    .filter((message) => message.role === "assistant")
+    .flatMap((message) => message.content.split(/\r?\n/))
+    .filter((line) => /^\d+\.\s/.test(line));
+
+  return `마지막 사용자 메시지는 이전에 안내한 조치로 해결되지 않았다는 결과다. 이전 사용자 메시지의 증상을 기준으로, 아래의 이미 안내한 방법을 뺀 다른 조치를 찾는다. 아래 문장은 검색어에 쓰지 않는다.
+
+<excluded>
+${guidedSteps.join("\n")}
+</excluded>`;
+}
+
+function askWeb(
+  client: OpenAI,
+  messages: ChatMessage[],
+  followUp: boolean,
+): Promise<ChatResponse> {
+  const instructions = followUp
+    ? `${WEB_INSTRUCTIONS}\n\n${buildFollowUpNote(messages)}`
+    : WEB_INSTRUCTIONS;
+  const sourceMessages = followUp
+    ? messages.filter((message) => message.role === "user")
+    : currentSymptomMessages(messages);
+
+  const input = sourceMessages.map(({ role, content }) => ({
     role,
     content,
   }));
@@ -163,16 +204,22 @@ function askWeb(client: OpenAI, messages: ChatMessage[]): Promise<ChatResponse> 
       client.responses.parse({
         model: process.env.OPENAI_MODEL ?? DEFAULT_MODEL,
         store: false,
-        max_output_tokens: MAX_OUTPUT_TOKENS,
-        instructions: withViolation(WEB_INSTRUCTIONS, violation),
+        max_output_tokens: WEB_MAX_OUTPUT_TOKENS,
+        max_tool_calls: WEB_MAX_SEARCHES,
+        reasoning: { effort: "low" },
+        instructions: withViolation(instructions, violation),
         input,
         tools: [{ type: "web_search", search_context_size: "low" }],
         tool_choice: "required",
         text: { format: zodTextFormat(secondPassSchema, "second_pass") },
-      }),
+      }, { timeout: WEB_TIMEOUT_MS }),
     );
     return result?.output_parsed
-      ? checkSecondPass(result.output_parsed, extractCitations(result.output))
+      ? checkSecondPass(
+          result.output_parsed,
+          extractCitations(result.output),
+          followUp,
+        )
       : { ok: false, reason: INVALID_FORMAT_REASON };
   });
 }
@@ -180,11 +227,11 @@ function askWeb(client: OpenAI, messages: ChatMessage[]): Promise<ChatResponse> 
 export async function askAssistant(
   messages: ChatMessage[],
 ): Promise<ChatResponse> {
-  const client = new OpenAI({ timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
+  const client = new OpenAI({ timeout: MANUAL_TIMEOUT_MS, maxRetries: 0 });
 
   const manualAnswer = await askManuals(client, messages);
   // Design Ref: §2 흐름의 원칙 — 검색 여부는 서버가 정하며, "매뉴얼에 없음"일 때만 웹 검색 도구를 준다.
   return manualAnswer.kind === "notFound"
-    ? askWeb(client, messages)
+    ? askWeb(client, messages, manualAnswer.followUp)
     : manualAnswer;
 }

@@ -10,6 +10,7 @@ export const firstPassSchema = z.object({
   question: z.string().nullable(),
   steps: z.array(z.object({ text: z.string(), caution: z.boolean() })),
   sources: z.array(z.string()),
+  isFollowUp: z.boolean(),
   versions: z.array(
     z.object({
       name: z.string(),
@@ -39,6 +40,7 @@ function buildResponse(
   answer: FirstPass,
   manuals: Manual[],
   now: Date,
+  followUp: boolean,
 ): ChatResponse | { unknownSources: string[] } {
   switch (answer.status) {
     case "answer": {
@@ -57,7 +59,7 @@ function buildResponse(
         kind: "manual",
         steps: applyCaution(answer.steps),
         sources: known.map((manual) => toManualSource(manual, now)),
-        followUp: false,
+        followUp,
       };
     }
     // Design Ref: §1 답변 카드 종류 — 문서 충돌에도 단계 수 제한과 "주의" 표시를 적용한다.
@@ -89,7 +91,7 @@ function buildResponse(
     case "escalate":
       return { kind: "escalate" };
     case "notInManual":
-      return { kind: "notFound", followUp: false };
+      return { kind: "notFound", followUp };
   }
 }
 
@@ -124,10 +126,11 @@ function toLinks(citations: Citation[]): Citation[] {
 export function checkSecondPass(
   answer: SecondPass,
   citations: Citation[],
+  followUp = false,
 ): AnswerCheck {
   const links = toLinks(citations);
   if (!answer.found || links.length === 0) {
-    return { ok: true, response: { kind: "notFound", followUp: false } };
+    return { ok: true, response: { kind: "notFound", followUp } };
   }
 
   const parsed = chatResponseSchema.safeParse({
@@ -139,7 +142,7 @@ export function checkSecondPass(
       })),
     ),
     links,
-    followUp: false,
+    followUp,
   });
   if (!parsed.success) {
     return {
@@ -156,6 +159,7 @@ export function checkFirstPass(
   manuals: Manual[],
   now: Date,
   alreadyClarified = false,
+  canFollowUp = false,
 ): AnswerCheck {
   // Design Ref: §2 상황별 판단 규칙 — 증상 1건당 1번만 되묻고, 그래도 모호하면 검색 없이 선임 문의를 권한다.
   if (answer.status === "clarify" && alreadyClarified) {
@@ -168,7 +172,12 @@ export function checkFirstPass(
     };
   }
 
-  const response = buildResponse(answer, manuals, now);
+  const response = buildResponse(
+    answer,
+    manuals,
+    now,
+    answer.isFollowUp && canFollowUp,
+  );
   if ("unknownSources" in response) {
     return {
       ok: false,
