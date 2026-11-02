@@ -6,7 +6,7 @@ import { chatResponseSchema, type ChatResponse } from "./types";
 
 // OpenAI의 형식 지정은 모든 항목을 필수로 요구하므로, 쓰지 않는 값은 null이나 빈 배열로 받는다.
 export const firstPassSchema = z.object({
-  status: z.enum(["answer", "clarify", "notInManual"]),
+  status: z.enum(["answer", "clarify", "escalate", "notInManual"]),
   question: z.string().nullable(),
   steps: z.array(z.object({ text: z.string(), caution: z.boolean() })),
   sources: z.array(z.string()),
@@ -56,6 +56,8 @@ function buildResponse(
     }
     case "clarify":
       return { kind: "clarify", question: answer.question ?? "" };
+    case "escalate":
+      return { kind: "escalate" };
     case "notInManual":
       return { kind: "notFound", followUp: false };
   }
@@ -65,7 +67,19 @@ export function checkFirstPass(
   answer: FirstPass,
   manuals: Manual[],
   now: Date,
+  alreadyClarified = false,
 ): AnswerCheck {
+  // Design Ref: §2 상황별 판단 규칙 — 증상 1건당 1번만 되묻고, 그래도 모호하면 검색 없이 선임 문의를 권한다.
+  if (answer.status === "clarify" && alreadyClarified) {
+    return { ok: true, response: { kind: "escalate" } };
+  }
+  if (answer.status === "escalate" && !alreadyClarified) {
+    return {
+      ok: false,
+      reason: '아직 되묻지 않았으므로 status에 "escalate"를 쓰지 않는다.',
+    };
+  }
+
   const response = buildResponse(answer, manuals, now);
   if ("unknownSources" in response) {
     return {

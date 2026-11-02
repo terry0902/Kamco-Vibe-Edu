@@ -28,6 +28,47 @@ describe("askAssistant", () => {
     parse.mockReset();
   });
 
+  it("직전이 되묻기면 다시 묻지 말라고 지시하고, 또 되물으면 선임 문의로 바꾼다", async () => {
+    parse.mockResolvedValue(
+      parsed({ ...good, status: "clarify", question: "또 질문", steps: [], sources: [] }),
+    );
+
+    const response = await askAssistant([
+      { role: "user", content: "이상해요" },
+      { role: "assistant", content: "어느 장비인가요?", kind: "clarify" },
+      { role: "user", content: "몰라요" },
+    ]);
+
+    expect(response).toEqual({ kind: "escalate" });
+    expect(parse.mock.calls[0][0].instructions).toContain("다시 되묻지 않는다");
+  });
+
+  it("다른 증상을 새로 물으면 다시 되물을 수 있다", async () => {
+    parse.mockResolvedValue(
+      parsed({ ...good, status: "clarify", question: "어느 장비인가요?", steps: [], sources: [] }),
+    );
+
+    const response = await askAssistant([
+      { role: "user", content: "이상해요" },
+      { role: "assistant", content: "어느 장비인가요?", kind: "clarify" },
+      { role: "user", content: "디스크 풀" },
+      { role: "assistant", content: "1. 확인", kind: "manual" },
+      { role: "user", content: "또 이상해요" },
+    ]);
+
+    expect(response).toEqual({ kind: "clarify", question: "어느 장비인가요?" });
+    expect(parse.mock.calls[0][0].instructions).not.toContain("다시 되묻지 않는다");
+  });
+
+  it("되묻기 전의 선임 문의 판단은 다시 요청한다", async () => {
+    parse
+      .mockResolvedValueOnce(parsed({ ...good, status: "escalate", steps: [], sources: [] }))
+      .mockResolvedValueOnce(parsed(good));
+
+    await expect(askAssistant(messages)).resolves.toMatchObject({ kind: "manual" });
+    expect(parse).toHaveBeenCalledTimes(2);
+  });
+
   it("보관을 끄고 가린 대화와 매뉴얼을 보낸다", async () => {
     parse.mockResolvedValue(parsed(good));
 
