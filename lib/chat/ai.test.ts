@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { askAssistant } from "./ai";
+import type { ChatMessage } from "./types";
+import { askAssistant as ask } from "./ai";
 
-const parse = vi.hoisted(() => vi.fn());
+const { parse, clientOptions } = vi.hoisted(() => ({
+  parse: vi.fn(),
+  clientOptions: [] as unknown[],
+}));
+const API_KEY = "sk-test-key-0000000000000000";
+const askAssistant = (input: ChatMessage[]) => ask(input, API_KEY);
 
 vi.mock("server-only", () => ({}));
 vi.mock("openai", () => {
@@ -9,6 +15,9 @@ vi.mock("openai", () => {
   class OpenAI {
     static APIError = APIError;
     responses = { parse };
+    constructor(options: unknown) {
+      clientOptions.push(options);
+    }
   }
   return { default: OpenAI };
 });
@@ -263,6 +272,14 @@ describe("askAssistant", () => {
       expect(parse).toHaveBeenCalledTimes(3);
       expect(parse.mock.calls[2][0].instructions).toContain("직전 답변이 규칙을 어겼다");
     });
+  });
+
+  it("요청마다 사용자의 키로 OpenAI 클라이언트를 만든다", async () => {
+    parse.mockResolvedValue(parsed(good));
+
+    await askAssistant(messages);
+
+    expect(clientOptions.at(-1)).toMatchObject({ apiKey: API_KEY });
   });
 
   it("보관을 끄고 가린 대화와 매뉴얼을 보낸다", async () => {

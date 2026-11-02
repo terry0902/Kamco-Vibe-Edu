@@ -4,6 +4,8 @@ import { maskSensitive } from "@/lib/chat/mask";
 import {
   chatRequestSchema,
   chatResponseSchema,
+  API_KEY_HEADER,
+  isApiKeyFormatValid,
   isConversationTooLong,
   isInputTooLong,
   type ErrorCode,
@@ -31,6 +33,14 @@ const ERRORS: Record<ErrorCode, { status: number; message: string }> = {
     status: 429,
     message: "사용 한도에 도달해 답변할 수 없습니다. 선임에게 문의해 주세요.",
   },
+  API_KEY_REQUIRED: {
+    status: 401,
+    message: "설정에서 OpenAI API 키를 입력해 주세요.",
+  },
+  API_KEY_INVALID: {
+    status: 401,
+    message: "API 키가 올바르지 않습니다. 설정에서 키를 확인해 주세요.",
+  },
   AI_ERROR: {
     status: 502,
     message: "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -56,7 +66,29 @@ function isQuotaError(error: unknown): boolean {
   return typeof error.code === "string" && QUOTA_ERROR_CODES.has(error.code);
 }
 
+function isInvalidKeyError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === 401
+  );
+}
+
+function toErrorCode(error: unknown): ErrorCode {
+  if (isInvalidKeyError(error)) {
+    return "API_KEY_INVALID";
+  }
+  return isQuotaError(error) ? "QUOTA_EXCEEDED" : "AI_ERROR";
+}
+
 export async function POST(request: Request) {
+  // 키는 이번 요청의 OpenAI 호출에만 쓰고 저장하거나 로그에 남기지 않는다.
+  const apiKey = request.headers.get(API_KEY_HEADER)?.trim() ?? "";
+  if (!isApiKeyFormatValid(apiKey)) {
+    return errorResponse("API_KEY_REQUIRED");
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -92,7 +124,7 @@ export async function POST(request: Request) {
 
   try {
     const answer = chatResponseSchema.safeParse(
-      await askAssistant(maskedMessages),
+      await askAssistant(maskedMessages, apiKey),
     );
     if (!answer.success) {
       console.error("chat API 오류: AI_ERROR");
@@ -101,7 +133,7 @@ export async function POST(request: Request) {
     return Response.json(answer.data);
   } catch (error) {
     // 오류 객체에 입력 내용이 들어 있을 수 있으므로 오류 코드만 남긴다.
-    const code: ErrorCode = isQuotaError(error) ? "QUOTA_EXCEEDED" : "AI_ERROR";
+    const code = toErrorCode(error);
     console.error(`chat API 오류: ${code}`);
     return errorResponse(code);
   }

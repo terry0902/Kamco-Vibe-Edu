@@ -15,7 +15,15 @@ const STEPS = [
   },
 ];
 
-export default function WelcomeScreen() {
+type WelcomeScreenProps = {
+  needsApiKey: boolean;
+  onOpenSettings: () => void;
+};
+
+export default function WelcomeScreen({
+  needsApiKey,
+  onOpenSettings,
+}: WelcomeScreenProps) {
   return (
     <section className="my-auto flex flex-col items-center gap-6 py-4 text-center">
       <div className="flex flex-col gap-2">
@@ -24,6 +32,19 @@ export default function WelcomeScreen() {
           증상을 알려 주시면 조치 방법과 출처를 찾아 드립니다.
         </p>
       </div>
+
+      {needsApiKey && (
+        <div className="flex w-full flex-col items-center gap-2 rounded-lg bg-amber-100 p-4 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+          <p>시작하려면 본인의 OpenAI API 키가 필요합니다.</p>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="rounded-md bg-foreground px-4 py-2 font-medium text-background"
+          >
+            API 키 설정
+          </button>
+        </div>
+      )}
 
       <ol className="grid w-full gap-3 text-left sm:grid-cols-3">
         {STEPS.map((step, index) => (

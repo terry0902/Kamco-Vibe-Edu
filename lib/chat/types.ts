@@ -7,6 +7,14 @@ const MAX_SOURCES = 3;
 // 화면과 서버 API가 같은 기준으로 검사하도록 여기에 둔다.
 export const MAX_INPUT_LENGTH = 2000;
 
+// 사용자가 설정에 넣은 OpenAI 키를 서버로 보낼 때 쓰는 헤더다.
+export const API_KEY_HEADER = "x-openai-api-key";
+const API_KEY_FORMAT = /^[\x21-\x7e]{20,300}$/;
+
+export function isApiKeyFormatValid(apiKey: string): boolean {
+  return API_KEY_FORMAT.test(apiKey);
+}
+
 export function isInputTooLong(input: string): boolean {
   return input.length > MAX_INPUT_LENGTH;
 }
@@ -103,6 +111,8 @@ export const errorCodeSchema = z.enum([
   "INVALID_REQUEST",
   "QUOTA_EXCEEDED",
   "AI_ERROR",
+  "API_KEY_REQUIRED",
+  "API_KEY_INVALID",
 ]);
 
 export const errorResponseSchema = z.object({

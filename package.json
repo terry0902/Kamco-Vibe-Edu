@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "eval": "node --no-warnings tests/evaluation/run-evaluation.mjs"
+    "eval": "node --no-warnings --env-file=.env tests/evaluation/run-evaluation.mjs"
   },
   "dependencies": {
     "next": "16.4.3",
