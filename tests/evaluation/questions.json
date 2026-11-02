@@ -1,0 +1,26 @@
+[
+  { "id": 1, "type": "매뉴얼 안", "question": "/var 파티션에 쓰기를 하면 write error: No space left on device 가 나옵니다", "expect": { "kind": "manual", "source": "디스크 용량 부족 대응 매뉴얼", "keys": ["df -h", "du "] } },
+  { "id": 2, "type": "매뉴얼 안", "question": "df로 보면 용량은 남았는데 파일이 안 만들어져요. inode가 찬 것 같아요", "expect": { "kind": "manual", "source": "디스크 용량 부족 대응 매뉴얼", "keys": ["df -i"] } },
+  { "id": 3, "type": "매뉴얼 안", "question": "시스템 로그에 Out of memory: Killed process 가 보이고 서비스가 죽었습니다", "expect": { "kind": "manual", "source": "메모리 부족(OOM) 대응 매뉴얼", "keys": ["free -h", "ps aux"] } },
+  { "id": 4, "type": "매뉴얼 안", "question": "시스템 로그에 eth0 Link is Down이 계속 찍혀요", "expect": { "kind": "manual", "source": "네트워크 연결 장애 대응 매뉴얼", "keys": ["ip -br link"] } },
+  { "id": 5, "type": "매뉴얼 안", "question": "사이트 접속하면 504 Gateway Timeout이 나옵니다", "expect": { "kind": "manual", "source": "웹 서비스 응답 없음 대응 매뉴얼", "keys": ["systemctl status", "error.log"] } },
+  { "id": 6, "type": "매뉴얼 안", "question": "파드가 노드에는 올라갔는데 이미지를 못 받아서 Waiting 상태예요", "expect": { "kind": "manual", "source": "Kubernetes 파드 장애 확인 안내", "keys": ["kubectl describe pods"] } },
+  { "id": 7, "type": "매뉴얼 안", "question": "docker 명령을 치면 Cannot connect to the Docker daemon 이라고 나와요", "expect": { "kind": "manual", "source": "Docker 데몬 문제 해결 안내", "keys": ["DOCKER_HOST"] } },
+  { "id": 8, "type": "매뉴얼 안", "question": "커널 로그에 NVRM: Xid 메시지가 보이는데 어떻게 확인하나요", "expect": { "kind": "manual", "source": "NVIDIA GPU Xid 오류 확인 안내", "keys": ["nvidia-smi -q"] } },
+
+  { "id": 9, "type": "매뉴얼 밖", "question": "PostgreSQL에서 FATAL: too many connections for role 에러가 납니다", "expect": { "notInManual": true } },
+  { "id": 10, "type": "매뉴얼 밖", "question": "Tomcat에서 java.lang.OutOfMemoryError: Metaspace 가 발생합니다", "expect": { "notInManual": true } },
+  { "id": 11, "type": "매뉴얼 밖", "question": "Windows Server 이벤트 로그에 Kernel-Power 41이 남고 재부팅됩니다", "expect": { "notInManual": true } },
+  { "id": 12, "type": "매뉴얼 밖", "question": "BGP 피어가 Idle 상태에서 올라오지 않습니다", "expect": { "notInManual": true } },
+  { "id": 13, "type": "매뉴얼 밖", "question": "Elasticsearch 클러스터 상태가 red이고 샤드가 unassigned입니다", "expect": { "notInManual": true } },
+
+  { "id": 14, "type": "모호한 질문", "question": "서버가 좀 이상한 것 같아요", "followUp": "디스크가 가득 찼다고 No space left on device가 나와요", "expect": { "clarifyFirst": true, "kind": "manual", "source": "디스크 용량 부족 대응 매뉴얼", "keys": ["df -h"] } },
+  { "id": 15, "type": "모호한 질문", "question": "에러가 나요", "followUp": "nginx에서 502 Bad Gateway가 나요", "expect": { "clarifyFirst": true, "kind": "manual", "source": "웹 서비스 응답 없음 대응 매뉴얼", "keys": ["systemctl status"] } },
+  { "id": 16, "type": "모호한 질문", "question": "많이 느려요", "followUp": "저도 잘 모르겠어요", "expect": { "clarifyFirst": true, "kind": "escalate" } },
+
+  { "id": 17, "type": "문서 충돌·오래된 문서", "question": "GPU 서버 온도 경보가 떴어요. 어떻게 조치하나요", "expect": { "kind": "conflict", "sources": ["서버 과열 대응 매뉴얼", "서버실 온도 경보 조치 지침"] } },
+  { "id": 18, "type": "문서 충돌·오래된 문서", "question": "/proc/mdstat에 [U_]가 보이고 디스크 하나가 빠진 것 같습니다", "expect": { "kind": "manual", "source": "RAID 디스크 장애 대응 매뉴얼", "keys": ["mdadm --detail"], "outdated": true } },
+
+  { "id": 19, "type": "위험 조치", "question": "디스크가 꽉 찼는데 로그를 어떻게 정리하면 되나요", "expect": { "kind": "manual", "source": "디스크 용량 부족 대응 매뉴얼", "keys": ["df -h"], "cautionOn": "삭제|지우|truncate" } },
+  { "id": 20, "type": "위험 조치", "question": "백엔드가 죽어서 502가 납니다. 서비스를 어떻게 살리나요", "expect": { "kind": "manual", "source": "웹 서비스 응답 없음 대응 매뉴얼", "keys": ["journalctl"], "cautionOn": "restart|재시작" } }
+]
