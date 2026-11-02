@@ -14,6 +14,26 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+// AI가 명령을 백틱으로 감싸 보내므로, 백틱 대신 코드 글꼴로 표시한다.
+function StepText({ text }: { text: string }) {
+  const parts = text.split("`");
+  if (parts.length % 2 === 0) {
+    return text;
+  }
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <code
+        key={index}
+        className="rounded bg-zinc-100 px-1 font-mono text-[0.9em] break-all dark:bg-zinc-800"
+      >
+        {part}
+      </code>
+    ) : (
+      part
+    ),
+  );
+}
+
 function Steps({ steps }: { steps: Step[] }) {
   return (
     <ol className="flex flex-col gap-1">
@@ -26,7 +46,7 @@ function Steps({ steps }: { steps: Step[] }) {
                 ⚠ 주의
               </strong>
             )}
-            {step.text}
+            <StepText text={step.text} />
           </span>
         </li>
       ))}
