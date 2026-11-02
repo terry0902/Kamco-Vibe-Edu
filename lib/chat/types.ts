@@ -11,6 +11,17 @@ export function isInputTooLong(input: string): boolean {
   return input.length > MAX_INPUT_LENGTH;
 }
 
+const MAX_MESSAGES = 20;
+const MAX_CONVERSATION_LENGTH = 20000;
+
+export function isConversationTooLong(messages: ChatMessage[]): boolean {
+  const totalLength = messages.reduce(
+    (total, message) => total + message.content.length,
+    0,
+  );
+  return messages.length > MAX_MESSAGES || totalLength > MAX_CONVERSATION_LENGTH;
+}
+
 export const answerKindSchema = z.enum([
   "manual",
   "conflict",
