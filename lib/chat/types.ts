@@ -4,6 +4,13 @@ import { z } from "zod";
 const MAX_STEPS = 5;
 const MAX_SOURCES = 3;
 
+// 화면과 서버 API가 같은 기준으로 검사하도록 여기에 둔다.
+export const MAX_INPUT_LENGTH = 2000;
+
+export function isInputTooLong(input: string): boolean {
+  return input.length > MAX_INPUT_LENGTH;
+}
+
 export const answerKindSchema = z.enum([
   "manual",
   "conflict",
