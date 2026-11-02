@@ -12,6 +12,7 @@ import {
 } from "@/lib/chat/types";
 import AnswerCard, { ErrorCard } from "./AnswerCard";
 import ChatInput from "./ChatInput";
+import WelcomeScreen from "./WelcomeScreen";
 
 type Entry =
   | { id: number; type: "question"; text: string }
@@ -115,6 +116,7 @@ export default function Chat() {
         aria-live="polite"
         className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
       >
+        {entries.length === 0 && <WelcomeScreen />}
         {entries.map((entry) => {
           switch (entry.type) {
             case "question":
