@@ -1,6 +1,8 @@
 // Design Ref: §2 데이터 흐름 — 검사, 가리기, AI 호출 순서로 처리하고 대화를 저장하지 않는다.
 import { askAssistant } from "@/lib/chat/ai";
 import { buildCustomManuals } from "@/lib/chat/manuals";
+import { isRateLimited } from "@/lib/chat/rateLimit";
+import { getServerKey, isServerKeyMode } from "@/lib/chat/serverKey";
 import { maskSensitive } from "@/lib/chat/mask";
 import {
   chatRequestSchema,
@@ -41,6 +43,10 @@ const ERRORS: Record<ErrorCode, { status: number; message: string }> = {
   API_KEY_INVALID: {
     status: 401,
     message: "API 키가 올바르지 않습니다. 설정에서 키를 확인해 주세요.",
+  },
+  RATE_LIMITED: {
+    status: 429,
+    message: "요청이 많아 잠시 후 다시 시도해 주세요.",
   },
   AI_ERROR: {
     status: 502,
@@ -85,8 +91,22 @@ function toErrorCode(error: unknown): ErrorCode {
 
 export async function POST(request: Request) {
   // 키는 이번 요청의 OpenAI 호출에만 쓰고 저장하거나 로그에 남기지 않는다.
-  const apiKey = request.headers.get(API_KEY_HEADER)?.trim() ?? "";
+  // 발표용 서버 키 모드에서는 사용자가 보낸 키를 쓰지 않고, 남용을 막으려고 사용 횟수를 제한한다.
+  const serverKeyMode = isServerKeyMode();
+  if (serverKeyMode) {
+    const caller = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+    if (isRateLimited(caller)) {
+      return errorResponse("RATE_LIMITED");
+    }
+  }
+  const apiKey = serverKeyMode
+    ? getServerKey()
+    : (request.headers.get(API_KEY_HEADER)?.trim() ?? "");
   if (!isApiKeyFormatValid(apiKey)) {
+    if (serverKeyMode) {
+      console.error("chat API 오류: SERVER_KEY_MISSING");
+      return errorResponse("AI_ERROR");
+    }
     return errorResponse("API_KEY_REQUIRED");
   }
 

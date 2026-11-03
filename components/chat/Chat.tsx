@@ -21,6 +21,7 @@ import {
 import AnswerCard, { ErrorCard } from "./AnswerCard";
 import ChatInput from "./ChatInput";
 import SettingsDialog from "./SettingsDialog";
+import { useServerKeyMode } from "./useServerKeyMode";
 import { useCustomFolder } from "./useCustomFolder";
 import Sidebar from "./Sidebar";
 import {
@@ -67,6 +68,9 @@ async function requestAnswer(
 export default function Chat() {
   const { conversations, apiKey, keyRemembered, folder } = useChatStorage();
   const customFolder = useCustomFolder();
+  // 서버가 발표용 키 모드이면 사용자의 키 없이 답한다.
+  const serverKey = useServerKeyMode() === true;
+  const needsApiKey = !apiKey && !serverKey;
   // 내 폴더를 고르지 않았거나 새로고침으로 사라졌으면 기본 폴더로 답한다.
   const activeFolder: ManualFolderId =
     folder === "custom" && !customFolder ? DEFAULT_MANUAL_FOLDER : folder;
@@ -90,7 +94,7 @@ export default function Chat() {
   async function handleSubmit() {
     const question = input.trim();
     if (question === "" || loading || isInputTooLong(input)) return;
-    if (!apiKey) {
+    if (needsApiKey) {
       setSettingsOpen(true);
       return;
     }
@@ -157,7 +161,8 @@ export default function Chat() {
     <>
     {!started && (
       <StartHero
-        needsApiKey={!apiKey}
+        needsApiKey={needsApiKey}
+        keyDisabled={serverKey}
         onStart={() => setStarted(true)}
         onOpenHistory={() => {
           setStarted(true);
@@ -209,7 +214,7 @@ export default function Chat() {
         >
           {entries.length === 0 && (
             <WelcomeScreen
-              needsApiKey={!apiKey}
+              needsApiKey={needsApiKey}
               onOpenSettings={() => setSettingsOpen(true)}
             />
           )}
@@ -249,6 +254,7 @@ export default function Chat() {
       {settingsOpen && (
         <SettingsDialog
           apiKey={apiKey}
+          serverKey={serverKey}
           keyRemembered={keyRemembered}
           folder={folder}
           onSaveFolder={saveFolder}

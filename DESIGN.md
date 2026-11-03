@@ -389,7 +389,8 @@ tests/evaluation/           테스트 질문 20개(`questions.json`)와 데모 �
 
 | 이름 | 용도 | 사용 위치 |
 |---|---|---|
-| `OPENAI_API_KEY` | 개발 중 측정 스크립트의 OpenAI 인증 | `.env` 전용. 앱은 쓰지 않음 |
+| `OPENAI_API_KEY` | 개발 중 측정 스크립트의 OpenAI 인증. 서버 키 모드가 켜져 있을 때만 앱도 읽는다 | `.env`, 서버 키 모드에서는 Vercel |
+| `SERVER_KEY_MODE` | `true`이면 발표용 서버 키 모드. 없으면 꺼짐 | 서버 전용 |
 | `OPENAI_MODEL` | 사용할 모델 이름. 없으면 `gpt-6-luna` | 서버 전용 |
 | `EVAL_API_URL` | 측정 스크립트가 호출할 주소. 없으면 `http://localhost:3000/api/chat` | 측정 스크립트 전용 |
 | `EVAL_FOLDER`, `EVAL_QUESTIONS` | 측정할 매뉴얼 폴더(기본 `sample`)와 질문 파일(기본 `questions.json`). 데모는 `EVAL_FOLDER=demo EVAL_QUESTIONS=questions-demo.json` | 측정 스크립트 전용 |
@@ -410,6 +411,19 @@ Vercel에는 `OPENAI_MODEL`만 등록되어 있다.
 | 휴대폰 폭 | 왼쪽 목록은 메뉴 버튼으로 연다. |
 
 PRD 7장은 API 키를 서버 환경 변수로 관리하도록 정했으나, 사용자의 요청으로 이 방식으로 바꿨다.
+
+### 발표용 서버 키 모드 (임시)
+
+발표처럼 각자 키를 넣기 어려운 때를 위해, 서버 환경 변수 `SERVER_KEY_MODE=true`일 때만 서버가 `OPENAI_API_KEY`로 답한다. 사용자의 요청으로 추가했고, 평소에는 꺼 둔다.
+
+| 항목 | 방식 |
+|---|---|
+| 켜기 | 서버(Vercel)에 `SERVER_KEY_MODE=true`와 `OPENAI_API_KEY`를 등록하고 다시 배포 |
+| 서버 동작 | 켜져 있으면 요청 헤더의 사용자 키를 무시하고 서버 키로 OpenAI를 호출. 서버 키가 없거나 형식이 틀리면 키 값을 말하지 않고 `AI_ERROR` |
+| 화면 | `GET /api/mode`가 `{ serverKey: boolean }`만 돌려준다(키 값은 내보내지 않음). 켜져 있으면 시작 화면의 "API 키" 버튼과 키 안내를 숨기고, 설정 창의 키 입력을 막은 채 안내만 보여 준다. 참조 폴더 선택은 그대로 쓴다. |
+| 남용 방지 | 켜져 있을 때만 호출한 곳(`x-forwarded-for`)별로 10분에 30번까지 허용하고 넘으면 `RATE_LIMITED`(429). 서버 메모리에만 두는 최선의 보호 장치다. |
+| 위험 | 로그인이 없어 주소를 아는 사람은 누구나 서버 키로 질문할 수 있고, 요금은 키 주인에게 청구된다. OpenAI 계정에서 월 사용 상한을 걸고, 발표가 끝나면 끈다. |
+| 끄기 | Vercel에서 `SERVER_KEY_MODE`와 `OPENAI_API_KEY`를 지우고 다시 배포하면 이전처럼 사용자의 키로 동작한다. |
 
 ## 5. 보안
 

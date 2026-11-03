@@ -10,6 +10,7 @@ import { setCustomFolder, useCustomFolder } from "./useCustomFolder";
 
 type SettingsDialogProps = {
   apiKey: string;
+  serverKey: boolean;
   keyRemembered: boolean;
   folder: ManualFolderId;
   onSaveFolder: (folder: ManualFolderId) => void;
@@ -21,6 +22,7 @@ type SettingsDialogProps = {
 
 export default function SettingsDialog({
   apiKey,
+  serverKey,
   keyRemembered,
   folder,
   onSaveFolder,
@@ -104,6 +106,14 @@ export default function SettingsDialog({
         </button>
       </div>
 
+      {serverKey ? (
+        <p
+          role="status"
+          className="mt-4 rounded-xl bg-amber-400/15 p-3 text-sm leading-6 text-amber-200"
+        >
+          발표용 임시 설정으로, 서버에 설정된 키로 답합니다. 지금은 API 키를 입력할 수 없습니다.
+        </p>
+      ) : (
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2">
         <label htmlFor="api-key" className="text-sm font-medium">
           OpenAI API 키
@@ -168,6 +178,7 @@ export default function SettingsDialog({
           </button>
         </div>
       </form>
+      )}
 
       <div className="mt-5 border-t border-line pt-4">
         <label htmlFor="manual-folder" className="text-sm font-medium">

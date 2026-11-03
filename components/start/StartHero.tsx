@@ -79,6 +79,7 @@ const SYMPTOMS = [
 
 type StartHeroProps = {
   needsApiKey: boolean;
+  keyDisabled?: boolean;
   onStart: () => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
@@ -86,6 +87,7 @@ type StartHeroProps = {
 
 export default function StartHero({
   needsApiKey,
+  keyDisabled = false,
   onStart,
   onOpenHistory,
   onOpenSettings,
@@ -282,16 +284,18 @@ export default function StartHero({
             </li>
           </ul>
           <div className="nav-actions">
-            <button
-              type="button"
-              className="btn-login"
-              onClick={() => {
-                closeMenu();
-                onOpenSettings();
-              }}
-            >
-              API 키
-            </button>
+            {!keyDisabled && (
+              <button
+                type="button"
+                className="btn-login"
+                onClick={() => {
+                  closeMenu();
+                  onOpenSettings();
+                }}
+              >
+                API 키
+              </button>
+            )}
             <button
               type="button"
               className="btn-signup"
