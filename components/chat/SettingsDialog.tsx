@@ -88,7 +88,7 @@ export default function SettingsDialog({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="settings-title"
-      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-zinc-200 bg-background p-5 text-foreground backdrop:bg-black/40 dark:border-zinc-800"
+      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-line bg-surface p-5 text-foreground backdrop:bg-black/70"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 id="settings-title" className="text-base font-semibold">
@@ -98,7 +98,7 @@ export default function SettingsDialog({
           type="button"
           onClick={onClose}
           aria-label="설정 닫기"
-          className="rounded px-2 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="rounded px-2 py-1 text-sm hover:bg-white/10"
         >
           ✕
         </button>
@@ -119,7 +119,7 @@ export default function SettingsDialog({
             setStatus("");
           }}
           placeholder="sk-로 시작하는 키"
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-base outline-none focus:border-zinc-500 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="rounded-xl border border-line bg-background px-3 py-2 text-base text-foreground outline-none placeholder:text-muted focus:border-accent sm:text-sm"
         />
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -130,7 +130,7 @@ export default function SettingsDialog({
           />
           <span>
             이 브라우저에 계속 저장
-            <span className="block text-xs text-zinc-600 dark:text-zinc-400">
+            <span className="block text-xs text-muted">
               끄면 이 탭에서만 기억하고, 탭을 닫으면 지워집니다.
             </span>
           </span>
@@ -140,7 +140,7 @@ export default function SettingsDialog({
             {status}
           </p>
         )}
-        <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+        <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-muted">
           <li>키는 암호화 없이 브라우저에 보관됩니다. 공용 PC에서는 계속 저장을 켜지 마세요.</li>
           <li>
             답변을 만들 때 이 앱의 서버를 거쳐 OpenAI로 전달되며, 서버에 저장하지
@@ -156,20 +156,20 @@ export default function SettingsDialog({
             type="button"
             onClick={handleDeleteKey}
             disabled={!apiKey}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm disabled:opacity-40 dark:border-zinc-700"
+            className="rounded-full border border-line bg-white/5 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
           >
             키 삭제
           </button>
           <button
             type="submit"
-            className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
+            className="rounded-full px-5 py-2 text-sm bg-white font-semibold text-[#0a0a0f] hover:opacity-90"
           >
             저장
           </button>
         </div>
       </form>
 
-      <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <div className="mt-5 border-t border-line pt-4">
         <label htmlFor="manual-folder" className="text-sm font-medium">
           참조 매뉴얼 폴더
         </label>
@@ -179,7 +179,7 @@ export default function SettingsDialog({
           onChange={(event) => {
             if (isManualFolderId(event.target.value)) onSaveFolder(event.target.value);
           }}
-          className="mt-2 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-base outline-none focus:border-zinc-500 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="mt-2 w-full rounded-xl border border-line bg-background px-3 py-2 text-base text-foreground outline-none placeholder:text-muted focus:border-accent sm:text-sm"
         >
           {MANUAL_FOLDERS.map((item) => (
             <option key={item.id} value={item.id}>
@@ -187,7 +187,7 @@ export default function SettingsDialog({
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1 text-xs leading-5 text-muted">
           {MANUAL_FOLDERS.find((item) => item.id === folder)?.description}. 바꾸면 이후
           질문부터 이 폴더의 매뉴얼로 답합니다.
         </p>
@@ -198,7 +198,7 @@ export default function SettingsDialog({
                 <button
                   type="button"
                   onClick={handlePickFolder}
-                  className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
+                  className="rounded-full border border-line bg-white/5 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
                 >
                   {customFolder ? "다른 폴더 선택" : "폴더 선택"}
                 </button>
@@ -206,7 +206,7 @@ export default function SettingsDialog({
                   <button
                     type="button"
                     onClick={handleClearFolder}
-                    className="rounded-md px-3 py-2 text-sm text-zinc-600 underline dark:text-zinc-400"
+                    className="rounded-md px-3 py-2 text-sm text-muted underline"
                   >
                     선택 해제
                   </button>
@@ -229,11 +229,11 @@ export default function SettingsDialog({
               </p>
             )}
             {pickStatus && (
-              <p role="alert" className="font-medium text-red-700 dark:text-red-400">
+              <p role="alert" className="font-medium text-red-300">
                 {pickStatus}
               </p>
             )}
-            <ul className="list-disc space-y-1 pl-4 text-zinc-600 dark:text-zinc-400">
+            <ul className="list-disc space-y-1 pl-4 text-muted">
               <li>폴더 안의 .md, .txt 문서(하위 폴더 한 단계까지)를 이 브라우저가 읽습니다. 서버가 폴더에 접속하지는 않습니다.</li>
               <li>문서 내용은 질문할 때마다 서버를 거쳐 OpenAI로 전송되며, IP 주소와 호스트명 등은 가려서 보냅니다. 서버에는 저장하지 않습니다.</li>
               <li>이 탭에서만 기억하므로 새로고침하면 다시 골라야 합니다.</li>
@@ -243,9 +243,9 @@ export default function SettingsDialog({
         )}
       </div>
 
-      <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <div className="mt-5 border-t border-line pt-4">
         <h3 className="text-sm font-medium">대화 기록</h3>
-        <p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1 text-xs leading-5 text-muted">
           입력한 내용을 포함해 이 브라우저에만 저장됩니다. 지금 {conversationCount}
           개가 있으며, 50개를 넘으면 오래된 대화부터 지워집니다.
         </p>
@@ -253,7 +253,7 @@ export default function SettingsDialog({
           type="button"
           onClick={onClearConversations}
           disabled={conversationCount === 0}
-          className="mt-2 rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-40 dark:border-red-900 dark:text-red-400"
+          className="mt-2 rounded-full border border-red-400/50 px-4 py-2 text-sm text-red-300 hover:bg-red-950/40 disabled:opacity-40"
         >
           대화 전체 삭제
         </button>
