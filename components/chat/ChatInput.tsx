@@ -39,7 +39,7 @@ export default function ChatInput({
         onSubmit();
       }}
     >
-      <p className="text-xs font-medium text-red-700 dark:text-red-400">
+      <p className="text-xs font-medium text-red-300">
         {INPUT_NOTICE}
       </p>
       <div className="flex items-end gap-2">
@@ -52,29 +52,29 @@ export default function ChatInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
-          className={`min-w-0 flex-1 resize-none rounded-md border bg-white px-3 py-2 text-base outline-none sm:text-sm dark:bg-zinc-900 ${
+          className={`min-w-0 flex-1 resize-none rounded-xl border bg-surface px-3 py-2 text-base text-foreground outline-none placeholder:text-muted sm:text-sm ${
             tooLong
-              ? "border-red-500 focus:border-red-500"
-              : "border-zinc-300 focus:border-zinc-500 dark:border-zinc-700"
+              ? "border-red-400 focus:border-red-400"
+              : "border-line focus:border-accent"
           }`}
         />
         <button
           type="submit"
           disabled={disabled || tooLong || value.trim() === ""}
-          className="h-10 shrink-0 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+          className="h-10 shrink-0 rounded-full px-5 text-sm bg-white font-semibold text-[#0a0a0f] hover:opacity-90 disabled:opacity-40"
         >
           보내기
         </button>
       </div>
       <div className="flex items-center justify-between gap-3 text-xs">
-        <p role="alert" className="font-medium text-red-700 dark:text-red-400">
+        <p role="alert" className="font-medium text-red-300">
           {tooLong && "에러 부분만 넣어 주세요"}
         </p>
         <p
           className={
             tooLong
-              ? "shrink-0 font-medium text-red-700 dark:text-red-400"
-              : "shrink-0 text-zinc-600 dark:text-zinc-400"
+              ? "shrink-0 font-medium text-red-300"
+              : "shrink-0 text-muted"
           }
         >
           {value.length.toLocaleString("ko-KR")} /{" "}

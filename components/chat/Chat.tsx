@@ -183,18 +183,18 @@ export default function Chat() {
       />
 
       <div className="mx-auto flex h-full min-w-0 max-w-3xl flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <header className="flex items-center gap-3 border-b border-line px-4 py-3">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label="대화 목록 열기"
-            className="shrink-0 rounded-md border border-zinc-300 px-2.5 py-1 text-sm md:hidden dark:border-zinc-700"
+            className="shrink-0 rounded-full border border-line bg-white/5 px-3 py-1 text-sm md:hidden"
           >
             ☰
           </button>
           <div className="min-w-0">
             <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
-            <p className="truncate text-xs text-zinc-600 dark:text-zinc-400">
+            <p className="truncate text-xs text-muted">
               참조 폴더:{" "}
               {activeFolder === "custom" && customFolder
                 ? `내 폴더 (${customFolder.label})`
@@ -219,7 +219,7 @@ export default function Chat() {
                 return (
                   <p
                     key={index}
-                    className="max-w-[85%] self-end rounded-lg bg-zinc-200 px-3 py-2 text-sm leading-6 break-words whitespace-pre-wrap dark:bg-zinc-700"
+                    className="max-w-[85%] self-end rounded-2xl bg-accent/15 px-3 py-2 text-sm leading-6 break-words whitespace-pre-wrap ring-1 ring-accent/30"
                   >
                     {entry.text}
                   </p>
@@ -231,12 +231,12 @@ export default function Chat() {
             }
           })}
           {loading && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">찾는 중...</p>
+            <p className="text-sm text-muted">찾는 중...</p>
           )}
           <div ref={bottomRef} />
         </main>
 
-        <footer className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <footer className="border-t border-line px-4 py-3">
           <ChatInput
             value={input}
             disabled={loading}
