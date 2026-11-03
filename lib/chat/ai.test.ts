@@ -247,6 +247,67 @@ describe("askAssistant", () => {
       expect(request.instructions).not.toContain("<manuals>");
     });
 
+    it("이어지는 질문은 이전 답변 없이 완전한 질문 한 문장으로 검색한다", async () => {
+      parse
+        .mockResolvedValueOnce(
+          parsed({
+            ...good,
+            status: "notInManual",
+            steps: [],
+            sources: [],
+            standaloneQuestion: "유닉스에서 포트가 열렸는지 확인하는 방법",
+          }),
+        )
+        .mockResolvedValueOnce(webAnswer);
+
+      await askAssistant([
+        { role: "user", content: "리눅스에서 포트 열린지 확인하는 법" },
+        { role: "assistant", content: "1. ss -tln을 실행한다", kind: "web" },
+        { role: "user", content: "유닉스는?" },
+      ]);
+
+      expect(parse.mock.calls[1][0].input).toEqual([
+        { role: "user", content: "유닉스에서 포트가 열렸는지 확인하는 방법" },
+      ]);
+    });
+
+    it("AI가 쓴 완전한 질문도 다시 가린 뒤 검색한다", async () => {
+      parse
+        .mockResolvedValueOnce(
+          parsed({
+            ...good,
+            status: "notInManual",
+            steps: [],
+            sources: [],
+            standaloneQuestion: "10.0.0.1 서버의 포트 확인 방법",
+          }),
+        )
+        .mockResolvedValueOnce(webAnswer);
+
+      await askAssistant(messages);
+
+      expect(parse.mock.calls[1][0].input[0].content).toContain("[IP]");
+      expect(parse.mock.calls[1][0].input[0].content).not.toContain("10.0.0.1");
+    });
+
+    it("완전한 질문이 비어 있으면 현재 증상의 사용자 메시지를 보낸다", async () => {
+      parse
+        .mockResolvedValueOnce(
+          parsed({
+            ...good,
+            status: "notInManual",
+            steps: [],
+            sources: [],
+            standaloneQuestion: "  ",
+          }),
+        )
+        .mockResolvedValueOnce(webAnswer);
+
+      await askAssistant(messages);
+
+      expect(parse.mock.calls[1][0].input).toEqual(messages);
+    });
+
     it("출처가 없으면 다시 요청하지 않고 찾지 못함으로 답한다", async () => {
       parse
         .mockResolvedValueOnce(notInManual)

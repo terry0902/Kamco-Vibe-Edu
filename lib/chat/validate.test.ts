@@ -18,6 +18,7 @@ const base: FirstPass = {
   steps: [step],
   sources: ["가"],
   isFollowUp: false,
+  standaloneQuestion: null,
   versions: [],
 };
 const check = (answer: Partial<FirstPass>) =>

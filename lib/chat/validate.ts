@@ -11,6 +11,7 @@ export const firstPassSchema = z.object({
   steps: z.array(z.object({ text: z.string(), caution: z.boolean() })),
   sources: z.array(z.string()),
   isFollowUp: z.boolean(),
+  standaloneQuestion: z.string().nullable(),
   versions: z.array(
     z.object({
       name: z.string(),
