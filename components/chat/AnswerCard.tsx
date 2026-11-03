@@ -137,7 +137,7 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
       );
     case "escalate":
       return (
-        <Card title="선임 문의">
+        <Card title="추가 확인 필요">
           <p>증상을 특정하지 못했습니다. 질문을 재검토 해주세요.</p>
         </Card>
       );
