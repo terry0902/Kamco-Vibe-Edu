@@ -1,6 +1,12 @@
 // Design Ref: §2 주고받는 데이터 — 화면과 서버가 같은 형식을 쓰도록 검사 규칙과 타입을 한곳에 둔다.
 import { z } from "zod";
-import { DEFAULT_MANUAL_FOLDER, MANUAL_FOLDER_IDS } from "./folders.ts";
+import {
+  CUSTOM_MAX_DOC_CHARS,
+  CUSTOM_MAX_DOCS,
+  CUSTOM_MAX_TOTAL_CHARS,
+  DEFAULT_MANUAL_FOLDER,
+  MANUAL_FOLDER_IDS,
+} from "./folders.ts";
 
 const MAX_STEPS = 5;
 const MAX_SOURCES = 3;
@@ -102,11 +108,30 @@ const chatMessageSchema = z.discriminatedUnion("role", [
   }),
 ]);
 
-export const chatRequestSchema = z.object({
-  messages: z.array(chatMessageSchema).min(1),
-  // 참조할 매뉴얼 폴더. 목록에 없는 값은 거절하고, 빠지면 기본 폴더를 쓴다.
-  folder: z.enum(MANUAL_FOLDER_IDS).default(DEFAULT_MANUAL_FOLDER),
+// 사용자가 브라우저에서 고른 폴더(내 폴더)의 문서 1개. 서버가 머리말을 읽고 민감 정보를 가린다.
+export const customDocSchema = z.object({
+  file: z.string().min(1).max(200),
+  text: z.string().min(1).max(CUSTOM_MAX_DOC_CHARS),
+  modified: z.iso.date(),
 });
+
+export const chatRequestSchema = z
+  .object({
+    messages: z.array(chatMessageSchema).min(1),
+    // 참조할 매뉴얼 폴더. 목록에 없는 값은 거절하고, 빠지면 기본 폴더를 쓴다.
+    folder: z.enum(MANUAL_FOLDER_IDS).default(DEFAULT_MANUAL_FOLDER),
+    // folder가 "custom"일 때만 쓴다.
+    customDocs: z.array(customDocSchema).max(CUSTOM_MAX_DOCS).optional(),
+  })
+  .refine(
+    ({ folder, customDocs }) =>
+      folder !== "custom" ||
+      (customDocs !== undefined &&
+        customDocs.length > 0 &&
+        customDocs.reduce((sum, doc) => sum + doc.text.length, 0) <=
+          CUSTOM_MAX_TOTAL_CHARS),
+    { message: "내 폴더의 문서가 없거나 너무 많습니다." },
+  );
 
 export const errorCodeSchema = z.enum([
   "INPUT_TOO_LONG",
@@ -131,6 +156,7 @@ export type ManualSource = z.infer<typeof manualSourceSchema>;
 export type ChatResponse = z.infer<typeof chatResponseSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
+export type CustomDoc = z.infer<typeof customDocSchema>;
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 export type ErrorResponse = z.infer<typeof errorResponseSchema>;
 

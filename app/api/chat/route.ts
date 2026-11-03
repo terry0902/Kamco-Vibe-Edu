@@ -1,5 +1,6 @@
 // Design Ref: §2 데이터 흐름 — 검사, 가리기, AI 호출 순서로 처리하고 대화를 저장하지 않는다.
 import { askAssistant } from "@/lib/chat/ai";
+import { buildCustomManuals } from "@/lib/chat/manuals";
 import { maskSensitive } from "@/lib/chat/mask";
 import {
   chatRequestSchema,
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
     return errorResponse("INVALID_REQUEST");
   }
 
-  const { messages, folder } = parsed.data;
+  const { messages, folder, customDocs } = parsed.data;
   const lastMessage = messages[messages.length - 1];
   if (lastMessage.role !== "user" || lastMessage.content.trim() === "") {
     return errorResponse("INVALID_REQUEST");
@@ -124,7 +125,11 @@ export async function POST(request: Request) {
 
   try {
     const answer = chatResponseSchema.safeParse(
-      await askAssistant(maskedMessages, apiKey, folder),
+      await askAssistant(
+        maskedMessages,
+        apiKey,
+        folder === "custom" ? buildCustomManuals(customDocs ?? []) : folder,
+      ),
     );
     if (!answer.success) {
       console.error("chat API 오류: AI_ERROR");

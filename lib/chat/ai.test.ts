@@ -368,6 +368,22 @@ describe("askAssistant", () => {
     expect(instructions).not.toContain(name);
   });
 
+  it("내 폴더의 문서 목록이 오면 그 문서만 AI에 보낸다", async () => {
+    parse.mockResolvedValue(parsed({ ...good, sources: ["내 점검 절차"] }));
+
+    const response = await ask(messages, API_KEY, [
+      { name: "내 점검 절차", date: "2026-05-01", body: "내 본문" },
+    ]);
+
+    expect(response).toMatchObject({
+      kind: "manual",
+      sources: [{ name: "내 점검 절차", date: "2026-05-01" }],
+    });
+    const { instructions } = parse.mock.calls[0][0];
+    expect(instructions).toContain('<manual name="내 점검 절차" date="2026-05-01">');
+    expect(instructions).not.toContain(name);
+  });
+
   it("규칙을 어기면 이유를 알려 1번 다시 요청한다", async () => {
     parse
       .mockResolvedValueOnce(parsed({ ...good, sources: ["지어낸 문서"] }))

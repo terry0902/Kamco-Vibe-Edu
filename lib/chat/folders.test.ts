@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MANUAL_FOLDER,
+  BUILT_IN_FOLDER_IDS,
   isManualFolderId,
   MANUAL_FOLDER_IDS,
   manualFolderLabel,
@@ -11,7 +12,12 @@ describe("folders", () => {
     expect(MANUAL_FOLDER_IDS).toContain(DEFAULT_MANUAL_FOLDER);
   });
 
-  it.each(["sample", "demo"])("%s는 허용한다", (id) => {
+  it("내 폴더는 허용 목록에 있지만 기본 제공 폴더는 아니다", () => {
+    expect(MANUAL_FOLDER_IDS).toContain("custom");
+    expect(BUILT_IN_FOLDER_IDS).not.toContain("custom");
+  });
+
+  it.each(["sample", "demo", "custom"])("%s는 허용한다", (id) => {
     expect(isManualFolderId(id)).toBe(true);
   });
 

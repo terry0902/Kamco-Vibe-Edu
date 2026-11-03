@@ -3,7 +3,11 @@
 // Design Ref: §1 화면 구성 — 대화와 API 키는 서버에 저장하지 않고 이 브라우저에만 둔다.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toHistory, toTitle } from "@/lib/chat/conversations";
-import { manualFolderLabel, type ManualFolderId } from "@/lib/chat/folders";
+import {
+  DEFAULT_MANUAL_FOLDER,
+  manualFolderLabel,
+  type ManualFolderId,
+} from "@/lib/chat/folders";
 import {
   API_KEY_HEADER,
   chatResponseSchema,
@@ -11,10 +15,12 @@ import {
   isInputTooLong,
   type ChatMessage,
   type ChatResponse,
+  type CustomDoc,
 } from "@/lib/chat/types";
 import AnswerCard, { ErrorCard } from "./AnswerCard";
 import ChatInput from "./ChatInput";
 import SettingsDialog from "./SettingsDialog";
+import { useCustomFolder } from "./useCustomFolder";
 import Sidebar from "./Sidebar";
 import {
   appendEntry,
@@ -37,12 +43,13 @@ async function requestAnswer(
   messages: ChatMessage[],
   apiKey: string,
   folder: ManualFolderId,
+  customDocs: CustomDoc[] | undefined,
 ): Promise<ChatResult> {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json", [API_KEY_HEADER]: apiKey },
-      body: JSON.stringify({ messages, folder }),
+      body: JSON.stringify({ messages, folder, customDocs }),
     });
     const body: unknown = await response.json();
 
@@ -58,6 +65,10 @@ async function requestAnswer(
 
 export default function Chat() {
   const { conversations, apiKey, keyRemembered, folder } = useChatStorage();
+  const customFolder = useCustomFolder();
+  // 내 폴더를 고르지 않았거나 새로고침으로 사라졌으면 기본 폴더로 답한다.
+  const activeFolder: ManualFolderId =
+    folder === "custom" && !customFolder ? DEFAULT_MANUAL_FOLDER : folder;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -94,7 +105,12 @@ export default function Chat() {
     setInput("");
     setLoading(true);
 
-    const result = await requestAnswer(messages, apiKey, folder);
+    const result = await requestAnswer(
+      messages,
+      apiKey,
+      activeFolder,
+      activeFolder === "custom" ? customFolder?.docs : undefined,
+    );
 
     if (result.ok) {
       appendEntry(id, title, { type: "answer", response: result.response });
@@ -165,7 +181,10 @@ export default function Chat() {
           <div className="min-w-0">
             <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
             <p className="truncate text-xs text-zinc-600 dark:text-zinc-400">
-              참조 폴더: {manualFolderLabel(folder)}
+              참조 폴더:{" "}
+              {activeFolder === "custom" && customFolder
+                ? `내 폴더 (${customFolder.label})`
+                : manualFolderLabel(activeFolder)}
             </p>
           </div>
         </header>

@@ -5,6 +5,8 @@ import {
   type ManualFolderId,
 } from "@/lib/chat/folders";
 import { isApiKeyFormatValid } from "@/lib/chat/types";
+import { isFolderPickerSupported, pickLocalFolder } from "./localFolder";
+import { setCustomFolder, useCustomFolder } from "./useCustomFolder";
 
 type SettingsDialogProps = {
   apiKey: string;
@@ -31,6 +33,8 @@ export default function SettingsDialog({
   const [draft, setDraft] = useState(apiKey);
   const [remember, setRemember] = useState(keyRemembered);
   const [status, setStatus] = useState("");
+  const [pickStatus, setPickStatus] = useState("");
+  const customFolder = useCustomFolder();
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -45,6 +49,31 @@ export default function SettingsDialog({
     }
     onSaveApiKey(trimmed, remember);
     onClose();
+  }
+
+  async function handlePickFolder() {
+    const agreed = window.confirm(
+      "선택한 폴더의 문서 내용이 질문할 때마다 이 앱의 서버를 거쳐 OpenAI로 전송됩니다. IP 주소, 호스트명 등은 가려서 보내고 서버에는 저장하지 않습니다.\n\n사내 문서를 외부 AI로 보내도 되는지 확인했다면 계속하세요.",
+    );
+    if (!agreed) return;
+    try {
+      const result = await pickLocalFolder();
+      if (!result) return;
+      if (result.docs.length === 0) {
+        setPickStatus("읽을 수 있는 문서(.md, .txt)가 없습니다. 다른 폴더를 골라 주세요.");
+        return;
+      }
+      setCustomFolder(result);
+      onSaveFolder("custom");
+      setPickStatus("");
+    } catch {
+      setPickStatus("폴더를 읽지 못했습니다. 접근을 허용했는지 확인해 주세요.");
+    }
+  }
+
+  function handleClearFolder() {
+    setCustomFolder(null);
+    setPickStatus("");
   }
 
   function handleDeleteKey() {
@@ -160,9 +189,58 @@ export default function SettingsDialog({
         </select>
         <p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
           {MANUAL_FOLDERS.find((item) => item.id === folder)?.description}. 바꾸면 이후
-          질문부터 이 폴더의 매뉴얼로 답합니다. 아직 내 PC나 공유 폴더를 직접
-          연결할 수는 없습니다.
+          질문부터 이 폴더의 매뉴얼로 답합니다.
         </p>
+        {folder === "custom" && (
+          <div className="mt-3 flex flex-col gap-2 text-xs leading-5">
+            {isFolderPickerSupported() ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePickFolder}
+                  className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
+                >
+                  {customFolder ? "다른 폴더 선택" : "폴더 선택"}
+                </button>
+                {customFolder && (
+                  <button
+                    type="button"
+                    onClick={handleClearFolder}
+                    className="rounded-md px-3 py-2 text-sm text-zinc-600 underline dark:text-zinc-400"
+                  >
+                    선택 해제
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="font-medium">
+                이 브라우저는 폴더 선택을 지원하지 않습니다. Chrome이나 Edge를 써 주세요.
+              </p>
+            )}
+            {customFolder ? (
+              <p role="status" className="font-medium">
+                선택한 폴더: {customFolder.label} · 문서 {customFolder.docs.length}개
+                {customFolder.skipped.tooLong + customFolder.skipped.overLimit > 0 &&
+                  ` · 제외 ${customFolder.skipped.tooLong + customFolder.skipped.overLimit}개 (너무 길거나 한도 초과)`}
+              </p>
+            ) : (
+              <p className="font-medium">
+                아직 폴더를 고르지 않아 기본 샘플 매뉴얼로 답합니다.
+              </p>
+            )}
+            {pickStatus && (
+              <p role="alert" className="font-medium text-red-700 dark:text-red-400">
+                {pickStatus}
+              </p>
+            )}
+            <ul className="list-disc space-y-1 pl-4 text-zinc-600 dark:text-zinc-400">
+              <li>폴더 안의 .md, .txt 문서(하위 폴더 한 단계까지)를 이 브라우저가 읽습니다. 서버가 폴더에 접속하지는 않습니다.</li>
+              <li>문서 내용은 질문할 때마다 서버를 거쳐 OpenAI로 전송되며, IP 주소와 호스트명 등은 가려서 보냅니다. 서버에는 저장하지 않습니다.</li>
+              <li>이 탭에서만 기억하므로 새로고침하면 다시 골라야 합니다.</li>
+              <li>문서는 최대 30개, 문서당 5,000자, 전체 30,000자까지 쓰고 넘는 문서는 제외합니다.</li>
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
