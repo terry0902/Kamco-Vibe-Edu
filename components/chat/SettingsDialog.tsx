@@ -50,7 +50,7 @@ export default function SettingsDialog({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="settings-title"
-      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-white/15 bg-[#16161a] p-5 text-foreground shadow-2xl backdrop:bg-black/70"
+      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-zinc-200 bg-background p-5 text-foreground backdrop:bg-black/40 dark:border-zinc-800"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 id="settings-title" className="text-base font-semibold">
@@ -60,7 +60,7 @@ export default function SettingsDialog({
           type="button"
           onClick={onClose}
           aria-label="설정 닫기"
-          className="rounded px-2 py-1 text-sm hover:bg-white/10"
+          className="rounded px-2 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
           ✕
         </button>
@@ -81,7 +81,7 @@ export default function SettingsDialog({
             setStatus("");
           }}
           placeholder="sk-로 시작하는 키"
-          className="glass-field px-3 py-2 text-base text-zinc-100 outline-none placeholder:text-zinc-500 sm:text-sm"
+          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-base outline-none focus:border-zinc-500 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900"
         />
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -92,7 +92,7 @@ export default function SettingsDialog({
           />
           <span>
             이 브라우저에 계속 저장
-            <span className="block text-xs text-zinc-400">
+            <span className="block text-xs text-zinc-600 dark:text-zinc-400">
               끄면 이 탭에서만 기억하고, 탭을 닫으면 지워집니다.
             </span>
           </span>
@@ -102,7 +102,7 @@ export default function SettingsDialog({
             {status}
           </p>
         )}
-        <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-zinc-400">
+        <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
           <li>키는 암호화 없이 브라우저에 보관됩니다. 공용 PC에서는 계속 저장을 켜지 마세요.</li>
           <li>
             답변을 만들 때 이 앱의 서버를 거쳐 OpenAI로 전달되며, 서버에 저장하지
@@ -118,22 +118,22 @@ export default function SettingsDialog({
             type="button"
             onClick={handleDeleteKey}
             disabled={!apiKey}
-            className="glass-button px-3 py-2 text-sm disabled:opacity-40"
+            className="rounded-md border border-zinc-300 px-3 py-2 text-sm disabled:opacity-40 dark:border-zinc-700"
           >
             키 삭제
           </button>
           <button
             type="submit"
-            className="glass-primary px-4 py-2 text-sm font-medium"
+            className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
           >
             저장
           </button>
         </div>
       </form>
 
-      <div className="mt-5 border-t border-white/10 pt-4">
+      <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
         <h3 className="text-sm font-medium">대화 기록</h3>
-        <p className="mt-1 text-xs leading-5 text-zinc-400">
+        <p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
           입력한 내용을 포함해 이 브라우저에만 저장됩니다. 지금 {conversationCount}
           개가 있으며, 50개를 넘으면 오래된 대화부터 지워집니다.
         </p>
@@ -141,7 +141,7 @@ export default function SettingsDialog({
           type="button"
           onClick={onClearConversations}
           disabled={conversationCount === 0}
-          className="mt-2 rounded-lg border border-red-400/50 px-3 py-2 text-sm text-red-300 hover:bg-red-950/40 disabled:opacity-40"
+          className="mt-2 rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-40 dark:border-red-900 dark:text-red-400"
         >
           대화 전체 삭제
         </button>

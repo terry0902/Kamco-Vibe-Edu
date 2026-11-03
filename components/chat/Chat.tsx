@@ -2,8 +2,6 @@
 
 // Design Ref: §1 화면 구성 — 대화와 API 키는 서버에 저장하지 않고 이 브라우저에만 둔다.
 import { useEffect, useMemo, useRef, useState } from "react";
-import GlassHero from "@/components/glass/GlassHero";
-import { useGlassPointer } from "@/components/glass/useGlassPointer";
 import { toHistory, toTitle } from "@/lib/chat/conversations";
 import {
   API_KEY_HEADER,
@@ -62,11 +60,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [started, setStarted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-
-  useGlassPointer(stageRef);
 
   const entries = useMemo(
     () => conversations.find((item) => item.id === activeId)?.entries ?? [],
@@ -139,21 +133,7 @@ export default function Chat() {
   }
 
   return (
-    <>
-    {/* 시작 화면은 기울임 판 밖에 둬서 화면 전체를 덮는다. */}
-    {!started && (
-      <GlassHero
-        needsApiKey={!apiKey}
-        onStart={() => setStarted(true)}
-        onOpenHistory={() => {
-          setStarted(true);
-          setSidebarOpen(true);
-        }}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
-    )}
-    <div ref={stageRef} className="glass-stage h-dvh w-full bg-background p-3 md:p-4">
-      <div className="glass-slab flex h-full w-full gap-3.5">
+    <div className="flex h-dvh w-full">
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -169,18 +149,17 @@ export default function Chat() {
         }}
       />
 
-      <div className="glass-3d mx-auto flex h-full min-w-0 max-w-3xl flex-1 flex-col gap-3.5">
-        <div className="glass glass-panel-lift flex min-h-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+      <div className="mx-auto flex h-full min-w-0 max-w-3xl flex-1 flex-col">
+        <header className="flex items-center gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label="대화 목록 열기"
-            className="glass-button shrink-0 px-2.5 py-1 text-sm md:hidden"
+            className="shrink-0 rounded-md border border-zinc-300 px-2.5 py-1 text-sm md:hidden dark:border-zinc-700"
           >
             ☰
           </button>
-          <h1 className="text-base font-semibold text-white">서버 장애 대응 도우미</h1>
+          <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
         </header>
 
         <main
@@ -199,7 +178,7 @@ export default function Chat() {
                 return (
                   <p
                     key={index}
-                    className="max-w-[85%] self-end rounded-xl bg-[#b9abff]/15 px-3 py-2 text-sm leading-6 break-words whitespace-pre-wrap text-zinc-100 shadow-[inset_0_0_0_1px_rgba(185,171,255,.25)]"
+                    className="max-w-[85%] self-end rounded-lg bg-zinc-200 px-3 py-2 text-sm leading-6 break-words whitespace-pre-wrap dark:bg-zinc-700"
                   >
                     {entry.text}
                   </p>
@@ -211,13 +190,12 @@ export default function Chat() {
             }
           })}
           {loading && (
-            <p className="text-sm text-zinc-400">찾는 중...</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">찾는 중...</p>
           )}
           <div ref={bottomRef} />
         </main>
-        </div>
 
-        <footer className="glass glass-panel-lift px-4 py-3">
+        <footer className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
           <ChatInput
             value={input}
             disabled={loading}
@@ -225,7 +203,6 @@ export default function Chat() {
             onSubmit={handleSubmit}
           />
         </footer>
-      </div>
       </div>
 
       {settingsOpen && (
@@ -239,6 +216,5 @@ export default function Chat() {
         />
       )}
     </div>
-    </>
   );
 }

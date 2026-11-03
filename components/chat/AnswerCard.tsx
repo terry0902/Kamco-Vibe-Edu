@@ -7,8 +7,8 @@ const WEB_NOTICE = "매뉴얼 외 정보이므로 검토 후 적용하세요";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <article className="glass-soft glass-lift w-full p-4 text-sm leading-6 text-zinc-300">
-      <h2 className="mb-2 font-semibold text-white">{title}</h2>
+    <article className="w-full rounded-lg border border-zinc-200 bg-white p-4 text-sm leading-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <h2 className="mb-2 font-semibold">{title}</h2>
       {children}
     </article>
   );
@@ -25,7 +25,7 @@ function StepText({ text }: { text: string }) {
     index % 2 === 1 ? (
       <code
         key={index}
-        className="rounded bg-white/10 px-1 font-mono text-[0.9em] break-all text-zinc-100"
+        className="rounded bg-zinc-100 px-1 font-mono text-[0.9em] break-all dark:bg-zinc-800"
       >
         {part}
       </code>
@@ -43,7 +43,7 @@ function Steps({ steps }: { steps: Step[] }) {
           <span className="shrink-0">{index + 1}.</span>
           <span className="min-w-0 break-words">
             {step.caution && (
-              <strong className="mr-1 rounded bg-amber-400/20 px-1.5 py-0.5 text-xs font-semibold text-amber-200">
+              <strong className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
                 ⚠ 주의
               </strong>
             )}
@@ -60,7 +60,7 @@ function SourceLabel({ source }: { source: ManualSource }) {
     <>
       {source.name} ({source.date})
       {source.outdated && (
-        <span className="ml-1 rounded bg-white/15 px-1.5 py-0.5 text-xs">
+        <span className="ml-1 rounded bg-zinc-200 px-1.5 py-0.5 text-xs dark:bg-zinc-700">
           오래된 문서
         </span>
       )}
@@ -84,7 +84,7 @@ export function ErrorCard({ message }: { message: string }) {
   return (
     <article
       role="alert"
-      className="w-full rounded-xl border border-red-400/40 bg-red-950/50 p-4 text-sm leading-6 text-red-200"
+      className="w-full rounded-lg border border-red-300 bg-red-50 p-4 text-sm leading-6 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
     >
       {message}
     </article>
@@ -97,7 +97,7 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
       return (
         <Card title="매뉴얼 답변">
           <Steps steps={response.steps} />
-          <div className="mt-3 border-t border-white/10 pt-2 text-xs text-zinc-400">
+          <div className="mt-3 border-t border-zinc-200 pt-2 text-xs dark:border-zinc-800">
             <p className="font-medium">근거</p>
             <ul className="mt-1 flex flex-col gap-1">
               {response.sources.map((source) => (
@@ -118,7 +118,7 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
             {response.versions.map((version) => (
               <section
                 key={version.name}
-                className="min-w-0 rounded-lg border border-white/10 p-3"
+                className="min-w-0 rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
               >
                 <h3 className="mb-2 text-xs font-medium">
                   <SourceLabel source={version} />
@@ -144,14 +144,14 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
     case "web":
       return (
         <Card title="인터넷 답변">
-          <p className="mb-2 rounded bg-amber-400/20 px-2 py-1 font-medium text-amber-200">
+          <p className="mb-2 rounded bg-amber-100 px-2 py-1 font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
             {WEB_NOTICE}
           </p>
           <div className="mb-2">
             <MissingLabel followUp={response.followUp} />
           </div>
           <Steps steps={response.steps} />
-          <div className="mt-3 border-t border-white/10 pt-2 text-xs text-zinc-400">
+          <div className="mt-3 border-t border-zinc-200 pt-2 text-xs dark:border-zinc-800">
             <p className="font-medium">출처</p>
             <ul className="mt-1 flex flex-col gap-1">
               {response.links.map((link) => (
@@ -160,7 +160,7 @@ export default function AnswerCard({ response }: { response: ChatResponse }) {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#b9abff] underline"
+                    className="underline"
                   >
                     {link.title}
                   </a>
