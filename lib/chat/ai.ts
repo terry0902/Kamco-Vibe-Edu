@@ -3,6 +3,7 @@ import "server-only";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { loadManuals, type Manual } from "./manuals";
+import { maskSensitive } from "./mask";
 import type { AnswerKind, ChatMessage, ChatResponse } from "./types";
 import {
   checkFirstPass,
@@ -31,6 +32,7 @@ const WEB_INSTRUCTIONS = `당신은 서버 장애 대응을 돕는 도우미다.
 
 규칙:
 - 입력한 증상이나 에러를 직접 다루고 구체적인 조치 방법이 있는 페이지만 근거로 쓴다.
+- 입력이 운영체제나 제품을 지정하면 그 대상을 다루는 페이지만 근거로 쓴다. 비슷한 다른 대상(예: 유닉스를 물었는데 리눅스)의 페이지로 답하지 않는다.
 - 그런 페이지가 1개도 없으면 found를 false로 하고 steps를 빈 배열로 한다. 일반 지식이나 추측으로 채우지 않는다.
 - 찾으면 found를 true로 하고, steps에 페이지에 있는 조치를 순서대로 최대 5단계의 한국어로 쓴다. 명령은 그대로 옮긴다.
 - 재부팅, 서비스 중지·재시작, 삭제, 포맷, 설정 변경에 해당하는 단계는 caution을 true로, 나머지는 false로 한다.
@@ -61,6 +63,8 @@ function buildInstructions(manuals: Manual[]): string {
 - 증상이나 에러를 특정할 수 없을 만큼 입력이 모호하면 status를 "clarify"로 하고, question에 필요한 정보를 묻는 한국어 질문 1개를 쓴다.
 - 입력이 매뉴얼에서 다루지 않는 주제임을 알 수 있으면 되묻지 말고 status를 "notInManual"로 한다.
 - 이전 대화와 다른 증상을 입력하면 현재 입력만 기준으로 판단한다.
+- 입력이 이전 대화의 주제를 이어 받는 짧은 질문이면(예: 리눅스에서 열린 포트를 확인하는 방법을 물은 뒤 "유닉스는?") 이전 대화를 합쳐 완전한 질문으로 이해하고 판단한다. 이런 입력은 모호한 입력이 아니므로 되묻지 않는다.
+- status가 "notInManual"이면 standaloneQuestion에 이전 대화를 몰라도 뜻이 통하는 현재 질문을 한국어 한 문장으로 쓴다. 이전 대화와 다른 증상이면 현재 입력의 내용만, 되묻기에 답한 입력이면 되묻기 전 증상까지 합쳐 쓴다. 가려진 값의 표시는 그대로 둔다. 다른 status에서는 null로 한다.
 - 입력이 직전에 안내한 조치의 결과(해결되지 않음, 더 나빠짐 등)를 알리는 것이면 isFollowUp을 true로, 아니면 false로 한다.
   - isFollowUp이 true이면 이미 안내한 방법은 빼고 매뉴얼에서 다른 방법을 찾아 "answer"로 답한다. 다른 방법이 없으면 되묻지 말고 "notInManual"로 한다.
 - 쓰지 않는 항목은 question은 null, steps와 sources와 versions는 빈 배열로 한다.
@@ -104,10 +108,10 @@ async function withOneRetry(
   throw new Error("AI 답변 규칙 위반");
 }
 
-function askManuals(
+async function askManuals(
   client: OpenAI,
   messages: ChatMessage[],
-): Promise<ChatResponse> {
+): Promise<{ response: ChatResponse; standaloneQuestion: string | null }> {
   const manuals = loadManuals();
   const previous = messages.at(-2);
   const alreadyClarified =
@@ -118,8 +122,9 @@ function askManuals(
   const instructions = alreadyClarified
     ? `${buildInstructions(manuals)}\n\n${ALREADY_CLARIFIED_NOTE}`
     : buildInstructions(manuals);
+  let standaloneQuestion: string | null = null;
 
-  return withOneRetry(async (violation) => {
+  const response = await withOneRetry(async (violation) => {
     const result = await nullOnInvalidAnswer(() =>
       client.responses.parse({
         model: process.env.OPENAI_MODEL ?? DEFAULT_MODEL,
@@ -130,6 +135,7 @@ function askManuals(
         text: { format: zodTextFormat(firstPassSchema, "first_pass") },
       }),
     );
+    standaloneQuestion = result?.output_parsed?.standaloneQuestion ?? null;
     return result?.output_parsed
       ? checkFirstPass(
           result.output_parsed,
@@ -140,10 +146,19 @@ function askManuals(
         )
       : { ok: false, reason: INVALID_FORMAT_REASON };
   });
+  return { response, standaloneQuestion };
 }
 
 // Design Ref: §2 2차 호출에 보내는 내용 — 매뉴얼과 이전 답변은 빼고 현재 증상의 사용자 메시지만 보낸다.
-function currentSymptomMessages(messages: ChatMessage[]): ChatMessage[] {
+function currentSymptomMessages(
+  messages: ChatMessage[],
+  standaloneQuestion: string | null,
+): ChatMessage[] {
+  // AI가 쓴 문장이라 입력을 가렸더라도 외부로 보내기 전에 다시 가린다.
+  const question = maskSensitive(standaloneQuestion?.trim() ?? "");
+  if (question !== "") {
+    return [{ role: "user", content: question }];
+  }
   const lastAnswer = messages.findLastIndex(
     (message) => message.role === "assistant" && message.kind !== "clarify",
   );
@@ -186,13 +201,14 @@ function askWeb(
   client: OpenAI,
   messages: ChatMessage[],
   followUp: boolean,
+  standaloneQuestion: string | null,
 ): Promise<ChatResponse> {
   const instructions = followUp
     ? `${WEB_INSTRUCTIONS}\n\n${buildFollowUpNote(messages)}`
     : WEB_INSTRUCTIONS;
   const sourceMessages = followUp
     ? messages.filter((message) => message.role === "user")
-    : currentSymptomMessages(messages);
+    : currentSymptomMessages(messages, standaloneQuestion);
 
   const input = sourceMessages.map(({ role, content }) => ({
     role,
@@ -230,9 +246,9 @@ export async function askAssistant(
 ): Promise<ChatResponse> {
   const client = new OpenAI({ apiKey, timeout: MANUAL_TIMEOUT_MS, maxRetries: 0 });
 
-  const manualAnswer = await askManuals(client, messages);
+  const { response, standaloneQuestion } = await askManuals(client, messages);
   // Design Ref: §2 흐름의 원칙 — 검색 여부는 서버가 정하며, "매뉴얼에 없음"일 때만 웹 검색 도구를 준다.
-  return manualAnswer.kind === "notFound"
-    ? askWeb(client, messages, manualAnswer.followUp)
-    : manualAnswer;
+  return response.kind === "notFound"
+    ? askWeb(client, messages, response.followUp, standaloneQuestion)
+    : response;
 }
