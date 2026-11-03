@@ -56,7 +56,7 @@ Next.js 16.4 (App Router), React 19, TypeScript(strict), Tailwind CSS 4, ESLint 
 
 AI 서비스는 OpenAI를 쓰고, 인터넷 검색도 OpenAI 웹 검색 도구를 쓴다. 앱은 사용자가 설정에 넣은 키로 호출하고, `.env`의 `OPENAI_API_KEY`는 `npm run eval` 같은 개발용 측정에만 쓴다.
 
-추가 패키지는 `openai`, `zod`, `server-only`, Vitest, 시작 화면용 `three`로 정했고, [DESIGN.md](DESIGN.md) 3장의 해당 작업에서 설치한다.
+추가 패키지는 `openai`, `zod`, `server-only`, Vitest로 정했고, [DESIGN.md](DESIGN.md) 3장의 해당 작업에서 설치한다.
 
 ```bash
 npm run dev            # 개발 서버 (http://localhost:3000)
