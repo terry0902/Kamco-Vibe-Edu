@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { askAssistant } from "@/lib/chat/ai";
 import { POST } from "./route";
 
+vi.mock("server-only", () => ({}));
 vi.mock("@/lib/chat/ai", () => ({ askAssistant: vi.fn() }));
 
 const ask = vi.mocked(askAssistant);
@@ -147,6 +148,51 @@ describe("POST /api/chat", () => {
   it("허용한 폴더는 그대로 넘긴다", async () => {
     await send({ messages: [user("질문")], folder: "demo" });
     expect(ask.mock.calls[0][2]).toBe("demo");
+  });
+
+  describe("내 폴더(custom)", () => {
+    const doc = (text: string, file = "점검.md") => ({ file, text, modified: "2026-05-01" });
+
+    it("문서를 가려서 목록으로 AI에 넘긴다", async () => {
+      await send({
+        messages: [user("질문")],
+        folder: "custom",
+        customDocs: [doc("서버 10.0.0.5 에서 `systemctl restart app`을 실행한다")],
+      });
+      const source = ask.mock.calls[0][2];
+      expect(Array.isArray(source)).toBe(true);
+      expect(source).toEqual([
+        {
+          name: "점검",
+          date: "2026-05-01",
+          body: "서버 [IP] 에서 `systemctl restart app`을 실행한다",
+        },
+      ]);
+    });
+
+    it.each([
+      ["문서 없음", undefined],
+      ["빈 목록", []],
+      ["문서 31개", Array(31).fill(doc("내용"))],
+      ["문서 하나가 5,001자", [doc("가".repeat(5001))]],
+      ["전체 30,001자", Array(7).fill(doc("가".repeat(4286)))],
+      ["잘못된 날짜", [{ file: "a.md", text: "내용", modified: "어제" }]],
+    ])("거절한다: %s", async (_name, customDocs) => {
+      await expectError(
+        await send({ messages: [user("질문")], folder: "custom", customDocs }),
+        400,
+        "INVALID_REQUEST",
+      );
+    });
+
+    it("내 폴더가 아니면 보낸 문서를 쓰지 않는다", async () => {
+      await send({
+        messages: [user("질문")],
+        folder: "demo",
+        customDocs: [doc("내용")],
+      });
+      expect(ask.mock.calls[0][2]).toBe("demo");
+    });
   });
 
   it.each(["../secrets", "manuals", "", 1])(
