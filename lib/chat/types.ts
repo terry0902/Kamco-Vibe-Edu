@@ -141,6 +141,7 @@ export const errorCodeSchema = z.enum([
   "AI_ERROR",
   "API_KEY_REQUIRED",
   "API_KEY_INVALID",
+  "RATE_LIMITED",
 ]);
 
 export const errorResponseSchema = z.object({
