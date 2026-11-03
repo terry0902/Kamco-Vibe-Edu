@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  isManualFolderId,
+  MANUAL_FOLDERS,
+  type ManualFolderId,
+} from "@/lib/chat/folders";
 import { isApiKeyFormatValid } from "@/lib/chat/types";
 
 type SettingsDialogProps = {
   apiKey: string;
   keyRemembered: boolean;
+  folder: ManualFolderId;
+  onSaveFolder: (folder: ManualFolderId) => void;
   conversationCount: number;
   onSaveApiKey: (apiKey: string, remember: boolean) => void;
   onClearConversations: () => void;
@@ -13,6 +20,8 @@ type SettingsDialogProps = {
 export default function SettingsDialog({
   apiKey,
   keyRemembered,
+  folder,
+  onSaveFolder,
   conversationCount,
   onSaveApiKey,
   onClearConversations,
@@ -130,6 +139,31 @@ export default function SettingsDialog({
           </button>
         </div>
       </form>
+
+      <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <label htmlFor="manual-folder" className="text-sm font-medium">
+          참조 매뉴얼 폴더
+        </label>
+        <select
+          id="manual-folder"
+          value={folder}
+          onChange={(event) => {
+            if (isManualFolderId(event.target.value)) onSaveFolder(event.target.value);
+          }}
+          className="mt-2 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-base outline-none focus:border-zinc-500 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          {MANUAL_FOLDERS.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+          {MANUAL_FOLDERS.find((item) => item.id === folder)?.description}. 바꾸면 이후
+          질문부터 이 폴더의 매뉴얼로 답합니다. 아직 내 PC나 공유 폴더를 직접
+          연결할 수는 없습니다.
+        </p>
+      </div>
 
       <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
         <h3 className="text-sm font-medium">대화 기록</h3>

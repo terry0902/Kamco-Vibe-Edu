@@ -135,8 +135,30 @@ describe("POST /api/chat", () => {
       { role: "user", content: "password=[비밀번호]" },
     ],
       API_KEY,
+      "sample",
     );
   });
+
+  it("폴더를 지정하지 않으면 기본 폴더로 묻는다", async () => {
+    await send({ messages: [user("질문")] });
+    expect(ask.mock.calls[0][2]).toBe("sample");
+  });
+
+  it("허용한 폴더는 그대로 넘긴다", async () => {
+    await send({ messages: [user("질문")], folder: "demo" });
+    expect(ask.mock.calls[0][2]).toBe("demo");
+  });
+
+  it.each(["../secrets", "manuals", "", 1])(
+    "목록에 없는 폴더는 거절한다: %s",
+    async (folder) => {
+      await expectError(
+        await send({ messages: [user("질문")], folder }),
+        400,
+        "INVALID_REQUEST",
+      );
+    },
+  );
 
   it("형식이 틀린 AI 답변은 오류로 처리한다", async () => {
     ask.mockResolvedValue({ kind: "clarify", question: "" });

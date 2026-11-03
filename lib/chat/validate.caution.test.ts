@@ -20,6 +20,8 @@ describe("applyCaution", () => {
     "서비스를 재시작한다",
     "`systemctl stop nginx`를 실행한다",
     "`systemctl restart nginx`를 실행한다",
+    "`systemctl reload nginx`를 실행한다",
+    "서비스를 재적재한다",
     "`kill -9 1234`를 실행한다",
     "파일을 삭제한다",
     "로그를 지운다",

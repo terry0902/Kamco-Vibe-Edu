@@ -1,5 +1,6 @@
 // Design Ref: §2 주고받는 데이터 — 화면과 서버가 같은 형식을 쓰도록 검사 규칙과 타입을 한곳에 둔다.
 import { z } from "zod";
+import { DEFAULT_MANUAL_FOLDER, MANUAL_FOLDER_IDS } from "./folders.ts";
 
 const MAX_STEPS = 5;
 const MAX_SOURCES = 3;
@@ -103,6 +104,8 @@ const chatMessageSchema = z.discriminatedUnion("role", [
 
 export const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1),
+  // 참조할 매뉴얼 폴더. 목록에 없는 값은 거절하고, 빠지면 기본 폴더를 쓴다.
+  folder: z.enum(MANUAL_FOLDER_IDS).default(DEFAULT_MANUAL_FOLDER),
 });
 
 export const errorCodeSchema = z.enum([

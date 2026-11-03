@@ -3,9 +3,10 @@ import "server-only";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { DEFAULT_MANUAL_FOLDER, type ManualFolderId } from "./folders";
 import type { ManualSource } from "./types";
 
-const MANUALS_DIR = path.join(process.cwd(), "manuals");
+const MANUALS_ROOT = path.join(process.cwd(), "manuals");
 const FRONT_MATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 
 const frontMatterSchema = z.object({
@@ -30,14 +31,20 @@ export function parseManual(text: string): Manual {
   return { ...frontMatterSchema.parse(fields), body: match[2].trim() };
 }
 
-let cachedManuals: Manual[] | undefined;
+// 폴더 이름은 허용 목록(ManualFolderId)의 값만 받으므로 경로를 바꿔치기할 수 없다.
+const cachedManuals = new Map<ManualFolderId, Manual[]>();
 
-export function loadManuals(): Manual[] {
-  cachedManuals ??= readdirSync(MANUALS_DIR)
-    .filter((file) => file.endsWith(".md"))
-    .sort()
-    .map((file) => parseManual(readFileSync(path.join(MANUALS_DIR, file), "utf8")));
-  return cachedManuals;
+export function loadManuals(folder: ManualFolderId = DEFAULT_MANUAL_FOLDER): Manual[] {
+  let manuals = cachedManuals.get(folder);
+  if (!manuals) {
+    const dir = path.join(MANUALS_ROOT, folder);
+    manuals = readdirSync(dir)
+      .filter((file) => file.endsWith(".md"))
+      .sort()
+      .map((file) => parseManual(readFileSync(path.join(dir, file), "utf8")));
+    cachedManuals.set(folder, manuals);
+  }
+  return manuals;
 }
 
 export function toManualSource(manual: Manual, now: Date): ManualSource {

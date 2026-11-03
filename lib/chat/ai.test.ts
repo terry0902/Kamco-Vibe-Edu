@@ -357,6 +357,17 @@ describe("askAssistant", () => {
     expect(request.instructions).toContain(name);
   });
 
+  it("지정한 폴더의 매뉴얼만 AI에 보낸다", async () => {
+    parse.mockResolvedValue(parsed({ ...good, sources: ["TLS 인증서 만료 대응 매뉴얼"] }));
+
+    const response = await ask(messages, API_KEY, "demo");
+
+    expect(response).toMatchObject({ kind: "manual" });
+    const { instructions } = parse.mock.calls[0][0];
+    expect(instructions).toContain("TLS 인증서 만료 대응 매뉴얼");
+    expect(instructions).not.toContain(name);
+  });
+
   it("규칙을 어기면 이유를 알려 1번 다시 요청한다", async () => {
     parse
       .mockResolvedValueOnce(parsed({ ...good, sources: ["지어낸 문서"] }))
