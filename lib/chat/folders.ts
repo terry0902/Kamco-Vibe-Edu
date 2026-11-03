@@ -3,7 +3,7 @@ export const BUILT_IN_FOLDERS = [
   {
     id: "sample",
     label: "기본 샘플 매뉴얼",
-    description: "디스크, 메모리, 네트워크, 웹 서비스, GPU 등 기본 샘플 10개",
+    description: "디스크, 메모리, 네트워크, 웹 서비스, GPU, 방화벽 등 기본 샘플 13개",
   },
   {
     id: "demo",

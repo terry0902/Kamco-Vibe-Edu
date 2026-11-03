@@ -32,10 +32,14 @@ describe("parseManual", () => {
 });
 
 describe("loadManuals", () => {
-  it.each(BUILT_IN_FOLDER_IDS)("%s 폴더의 매뉴얼 10개를 모두 읽는다", (folder) => {
+  const EXPECTED_COUNT = { sample: 13, demo: 10 } as const;
+
+  it.each(BUILT_IN_FOLDER_IDS)("%s 폴더의 매뉴얼을 모두 읽는다", (folder) => {
     const manuals = loadManuals(folder);
-    expect(manuals).toHaveLength(10);
-    expect(new Set(manuals.map((manual) => manual.name)).size).toBe(10);
+    expect(manuals).toHaveLength(EXPECTED_COUNT[folder]);
+    expect(new Set(manuals.map((manual) => manual.name)).size).toBe(
+      EXPECTED_COUNT[folder],
+    );
     expect(manuals.every((manual) => manual.body.length > 0)).toBe(true);
   });
 
