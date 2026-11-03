@@ -39,7 +39,7 @@ export default function ChatInput({
         onSubmit();
       }}
     >
-      <p className="text-xs font-medium text-red-700 dark:text-red-400">
+      <p className="text-xs font-medium text-red-300">
         {INPUT_NOTICE}
       </p>
       <div className="flex items-end gap-2">
@@ -52,29 +52,27 @@ export default function ChatInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
-          className={`min-w-0 flex-1 resize-none rounded-md border bg-white px-3 py-2 text-base outline-none sm:text-sm dark:bg-zinc-900 ${
-            tooLong
-              ? "border-red-500 focus:border-red-500"
-              : "border-zinc-300 focus:border-zinc-500 dark:border-zinc-700"
+          className={`glass-field min-w-0 flex-1 resize-none px-3 py-2 text-base text-zinc-100 outline-none placeholder:text-zinc-500 sm:text-sm ${
+            tooLong ? "ring-1 ring-red-400" : ""
           }`}
         />
         <button
           type="submit"
           disabled={disabled || tooLong || value.trim() === ""}
-          className="h-10 shrink-0 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+          className="glass-primary h-10 shrink-0 px-4 text-sm font-medium disabled:opacity-40"
         >
           보내기
         </button>
       </div>
       <div className="flex items-center justify-between gap-3 text-xs">
-        <p role="alert" className="font-medium text-red-700 dark:text-red-400">
+        <p role="alert" className="font-medium text-red-300">
           {tooLong && "에러 부분만 넣어 주세요"}
         </p>
         <p
           className={
             tooLong
-              ? "shrink-0 font-medium text-red-700 dark:text-red-400"
-              : "shrink-0 text-zinc-600 dark:text-zinc-400"
+              ? "shrink-0 font-medium text-red-300"
+              : "shrink-0 text-zinc-400"
           }
         >
           {value.length.toLocaleString("ko-KR")} /{" "}
