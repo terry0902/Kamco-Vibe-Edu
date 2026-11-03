@@ -2,6 +2,7 @@
 
 // Design Ref: §1 화면 구성 — 대화와 API 키는 서버에 저장하지 않고 이 브라우저에만 둔다.
 import { useEffect, useMemo, useRef, useState } from "react";
+import StartHero from "@/components/start/StartHero";
 import { toHistory, toTitle } from "@/lib/chat/conversations";
 import {
   DEFAULT_MANUAL_FOLDER,
@@ -74,6 +75,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [started, setStarted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const entries = useMemo(
@@ -152,6 +154,18 @@ export default function Chat() {
   }
 
   return (
+    <>
+    {!started && (
+      <StartHero
+        needsApiKey={!apiKey}
+        onStart={() => setStarted(true)}
+        onOpenHistory={() => {
+          setStarted(true);
+          setSidebarOpen(true);
+        }}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+    )}
     <div className="flex h-dvh w-full">
       <Sidebar
         conversations={conversations}
@@ -245,5 +259,6 @@ export default function Chat() {
         />
       )}
     </div>
+    </>
   );
 }
