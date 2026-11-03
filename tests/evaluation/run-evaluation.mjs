@@ -1,19 +1,24 @@
 // Design Ref: §6 정답률 채점 기준 — 실행 중인 앱에 테스트 질문을 보내 채점한다. 실제 OpenAI 비용이 든다.
 // 사용법: npm run dev 실행 후 npm run eval -- [결과 파일 경로]. .env의 OPENAI_API_KEY를 쓴다.
+// 데모 폴더는 EVAL_FOLDER=demo EVAL_QUESTIONS=questions-demo.json 으로 측정한다.
 import { readFileSync, writeFileSync } from "node:fs";
 import { API_KEY_HEADER, toHistoryMessage } from "../../lib/chat/types.ts";
 
 const API_URL = process.env.EVAL_API_URL ?? "http://localhost:3000/api/chat";
 const TARGET_RATE = 0.9;
+const FOLDER = process.env.EVAL_FOLDER ?? "sample";
 const questions = JSON.parse(
-  readFileSync(new URL("./questions.json", import.meta.url), "utf8"),
+  readFileSync(
+    new URL(`./${process.env.EVAL_QUESTIONS ?? "questions.json"}`, import.meta.url),
+    "utf8",
+  ),
 );
 
 async function post(messages) {
   const response = await fetch(API_URL, {
     method: "POST",
     headers: { [API_KEY_HEADER]: process.env.OPENAI_API_KEY ?? "" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, folder: FOLDER }),
   });
   return response.json();
 }

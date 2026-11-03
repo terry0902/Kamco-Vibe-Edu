@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     return errorResponse("INVALID_REQUEST");
   }
 
-  const { messages } = parsed.data;
+  const { messages, folder } = parsed.data;
   const lastMessage = messages[messages.length - 1];
   if (lastMessage.role !== "user" || lastMessage.content.trim() === "") {
     return errorResponse("INVALID_REQUEST");
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
 
   try {
     const answer = chatResponseSchema.safeParse(
-      await askAssistant(maskedMessages, apiKey),
+      await askAssistant(maskedMessages, apiKey, folder),
     );
     if (!answer.success) {
       console.error("chat API 오류: AI_ERROR");

@@ -2,6 +2,11 @@
 // API 키는 기본으로 이 탭의 sessionStorage에 두고, 사용자가 고르면 localStorage에 둔다.
 import { useSyncExternalStore } from "react";
 import {
+  DEFAULT_MANUAL_FOLDER,
+  isManualFolderId,
+  type ManualFolderId,
+} from "@/lib/chat/folders";
+import {
   parseConversations,
   upsertConversation,
   type Conversation,
@@ -10,18 +15,21 @@ import {
 
 const CONVERSATIONS_KEY = "server-incident-helper:conversations";
 const API_KEY_KEY = "server-incident-helper:openai-api-key";
+const FOLDER_KEY = "server-incident-helper:manual-folder";
 
 type StorageArea = "local" | "session";
 type Snapshot = {
   conversations: Conversation[];
   apiKey: string;
   keyRemembered: boolean;
+  folder: ManualFolderId;
 };
 
 const SERVER_SNAPSHOT: Snapshot = {
   conversations: [],
   apiKey: "",
   keyRemembered: false,
+  folder: DEFAULT_MANUAL_FOLDER,
 };
 const listeners = new Set<() => void>();
 let snapshot: Snapshot | undefined;
@@ -41,10 +49,12 @@ function readItem(area: StorageArea, key: string): string | null {
 function readSnapshot(): Snapshot {
   const tabKey = readItem("session", API_KEY_KEY);
   const rememberedKey = readItem("local", API_KEY_KEY);
+  const savedFolder = readItem("local", FOLDER_KEY);
   return {
     conversations: parseConversations(readItem("local", CONVERSATIONS_KEY)),
     apiKey: tabKey ?? rememberedKey ?? "",
     keyRemembered: tabKey === null && rememberedKey !== null,
+    folder: isManualFolderId(savedFolder) ? savedFolder : DEFAULT_MANUAL_FOLDER,
   };
 }
 
@@ -123,6 +133,12 @@ export function saveApiKey(apiKey: string, remember: boolean) {
     apiKey,
     keyRemembered: Boolean(apiKey) && remember,
   });
+}
+
+// 폴더 선택은 비밀이 아니므로 localStorage에 둔다. 바꾸면 이후 질문부터 적용된다.
+export function saveFolder(folder: ManualFolderId) {
+  writeItem("local", FOLDER_KEY, folder);
+  publish({ ...getSnapshot(), folder });
 }
 
 export function useChatStorage(): Snapshot {

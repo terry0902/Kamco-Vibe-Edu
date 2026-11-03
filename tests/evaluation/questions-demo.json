@@ -1,0 +1,16 @@
+[
+  { "id": 1, "type": "매뉴얼 안", "question": "어젯밤 DB 백업 작업이 실패했다는 경보가 왔습니다", "expect": { "kind": "manual", "source": "데이터베이스 백업 실패 대응 매뉴얼", "keys": ["df -h /backup", "journalctl"] } },
+  { "id": 2, "type": "매뉴얼 안", "question": "브라우저에 NET::ERR_CERT_DATE_INVALID가 나옵니다", "expect": { "kind": "manual", "source": "TLS 인증서 만료 대응 매뉴얼", "keys": ["openssl x509", "certbot renew"] } },
+  { "id": 3, "type": "매뉴얼 안", "question": "서버에서 Temporary failure in name resolution 에러가 나요. IP로는 접속돼요", "expect": { "kind": "manual", "source": "DNS 이름 해석 실패 대응 매뉴얼", "keys": ["resolvectl status", "dig "] } },
+  { "id": 4, "type": "매뉴얼 안", "question": "서버 시각이 다른 서버와 3초 정도 어긋나서 토큰 검증이 clock skew로 실패합니다", "expect": { "kind": "manual", "source": "시간 동기화(NTP) 오차 대응 매뉴얼", "keys": ["timedatectl status", "chronyc"] } },
+  { "id": 5, "type": "매뉴얼 안", "question": "ssh로 접속하면 Permission denied (publickey)가 나와요", "expect": { "kind": "manual", "source": "SSH 접속 불가 대응 매뉴얼", "keys": ["authorized_keys", "journalctl -u sshd"] } },
+  { "id": 6, "type": "매뉴얼 안", "question": "/var/log 아래 로그 파일이 계속 커지기만 하고 지난 로그가 안 생겨요", "expect": { "kind": "manual", "source": "로그 로테이션 미동작 대응 매뉴얼", "keys": ["logrotate -d", "logrotate.timer"] } },
+  { "id": 7, "type": "매뉴얼 안", "question": "앱에서 OOM command not allowed when used memory > 'maxmemory' 오류가 납니다", "expect": { "kind": "manual", "source": "Redis 메모리 부족 대응 매뉴얼", "keys": ["maxmemory-policy", "--bigkeys"] } },
+  { "id": 8, "type": "매뉴얼 안", "question": "로드 밸런서에서 백엔드 서버가 unhealthy로 표시돼요", "expect": { "kind": "manual", "source": "로드 밸런서 헬스체크 실패 대응 매뉴얼", "keys": ["/health", "curl"] } },
+  { "id": 9, "type": "매뉴얼 안", "question": "NFS 마운트한 폴더에서 df를 치면 멈춰요", "expect": { "kind": "manual", "source": "NFS 마운트 장애 대응 매뉴얼", "keys": ["timeout 5 df", "showmount"], "outdated": true } },
+  { "id": 10, "type": "매뉴얼 안", "question": "load average가 코어 수보다 훨씬 높고 ps에 defunct 프로세스가 쌓여요", "expect": { "kind": "manual", "source": "CPU 과부하·좀비 프로세스 대응 매뉴얼", "keys": ["uptime", "ps "] } },
+  { "id": 11, "type": "위험 조치", "question": "인증서를 갱신했는데 nginx에 어떻게 적용하나요", "expect": { "kind": "manual", "source": "TLS 인증서 만료 대응 매뉴얼", "keys": ["nginx -t"], "cautionOn": "reload|restart|재시작" } },
+  { "id": 12, "type": "매뉴얼 밖", "question": "Kafka 컨슈머 그룹의 lag이 계속 늘어납니다", "expect": { "notInManual": true } },
+  { "id": 13, "type": "매뉴얼 밖", "question": "MongoDB 레플리카셋에서 PRIMARY가 선출되지 않아요", "expect": { "notInManual": true } },
+  { "id": 14, "type": "모호한 질문", "question": "서버가 이상해요", "followUp": "ssh 접속할 때 Connection refused가 나요", "expect": { "clarifyFirst": true, "kind": "manual", "source": "SSH 접속 불가 대응 매뉴얼", "keys": ["systemctl status sshd"] } }
+]

@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_MANUAL_FOLDER,
+  MANUAL_FOLDER_IDS,
+  type ManualFolderId,
+} from "./folders";
 import { loadManuals, parseManual, toManualSource } from "./manuals";
 
 vi.mock("server-only", () => ({}));
@@ -27,11 +32,28 @@ describe("parseManual", () => {
 });
 
 describe("loadManuals", () => {
-  it("샘플 매뉴얼 10개를 모두 읽는다", () => {
-    const manuals = loadManuals();
+  it.each(MANUAL_FOLDER_IDS)("%s 폴더의 매뉴얼 10개를 모두 읽는다", (folder) => {
+    const manuals = loadManuals(folder);
     expect(manuals).toHaveLength(10);
     expect(new Set(manuals.map((manual) => manual.name)).size).toBe(10);
     expect(manuals.every((manual) => manual.body.length > 0)).toBe(true);
+  });
+
+  it("폴더를 생략하면 기본 폴더를 읽는다", () => {
+    expect(loadManuals()).toEqual(loadManuals(DEFAULT_MANUAL_FOLDER));
+  });
+
+  it("폴더마다 서로 다른 문서를 읽는다", () => {
+    const names = (folder: ManualFolderId) =>
+      loadManuals(folder).map((manual) => manual.name);
+    expect(names("demo").filter((name) => names("sample").includes(name))).toEqual([]);
+  });
+
+  it("데모 폴더에는 오래된 문서가 1개 이상 있다", () => {
+    const now = new Date();
+    expect(
+      loadManuals("demo").some((manual) => toManualSource(manual, now).outdated),
+    ).toBe(true);
   });
 });
 

@@ -2,6 +2,7 @@
 import "server-only";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
+import { DEFAULT_MANUAL_FOLDER, type ManualFolderId } from "./folders";
 import { loadManuals, type Manual } from "./manuals";
 import { maskSensitive } from "./mask";
 import type { AnswerKind, ChatMessage, ChatResponse } from "./types";
@@ -111,8 +112,9 @@ async function withOneRetry(
 async function askManuals(
   client: OpenAI,
   messages: ChatMessage[],
+  folder: ManualFolderId,
 ): Promise<{ response: ChatResponse; standaloneQuestion: string | null }> {
-  const manuals = loadManuals();
+  const manuals = loadManuals(folder);
   const previous = messages.at(-2);
   const alreadyClarified =
     previous?.role === "assistant" && previous.kind === "clarify";
@@ -243,10 +245,11 @@ function askWeb(
 export async function askAssistant(
   messages: ChatMessage[],
   apiKey: string,
+  folder: ManualFolderId = DEFAULT_MANUAL_FOLDER,
 ): Promise<ChatResponse> {
   const client = new OpenAI({ apiKey, timeout: MANUAL_TIMEOUT_MS, maxRetries: 0 });
 
-  const { response, standaloneQuestion } = await askManuals(client, messages);
+  const { response, standaloneQuestion } = await askManuals(client, messages, folder);
   // Design Ref: §2 흐름의 원칙 — 검색 여부는 서버가 정하며, "매뉴얼에 없음"일 때만 웹 검색 도구를 준다.
   return response.kind === "notFound"
     ? askWeb(client, messages, response.followUp, standaloneQuestion)

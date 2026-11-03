@@ -3,6 +3,7 @@
 // Design Ref: §1 화면 구성 — 대화와 API 키는 서버에 저장하지 않고 이 브라우저에만 둔다.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toHistory, toTitle } from "@/lib/chat/conversations";
+import { manualFolderLabel, type ManualFolderId } from "@/lib/chat/folders";
 import {
   API_KEY_HEADER,
   chatResponseSchema,
@@ -20,6 +21,7 @@ import {
   clearConversations,
   deleteConversation,
   saveApiKey,
+  saveFolder,
   useChatStorage,
 } from "./useChatStorage";
 import WelcomeScreen from "./WelcomeScreen";
@@ -34,12 +36,13 @@ const DEFAULT_ERROR_MESSAGE =
 async function requestAnswer(
   messages: ChatMessage[],
   apiKey: string,
+  folder: ManualFolderId,
 ): Promise<ChatResult> {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json", [API_KEY_HEADER]: apiKey },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, folder }),
     });
     const body: unknown = await response.json();
 
@@ -54,7 +57,7 @@ async function requestAnswer(
 }
 
 export default function Chat() {
-  const { conversations, apiKey, keyRemembered } = useChatStorage();
+  const { conversations, apiKey, keyRemembered, folder } = useChatStorage();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -91,7 +94,7 @@ export default function Chat() {
     setInput("");
     setLoading(true);
 
-    const result = await requestAnswer(messages, apiKey);
+    const result = await requestAnswer(messages, apiKey, folder);
 
     if (result.ok) {
       appendEntry(id, title, { type: "answer", response: result.response });
@@ -159,7 +162,12 @@ export default function Chat() {
           >
             ☰
           </button>
-          <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold">서버 장애 대응 도우미</h1>
+            <p className="truncate text-xs text-zinc-600 dark:text-zinc-400">
+              참조 폴더: {manualFolderLabel(folder)}
+            </p>
+          </div>
         </header>
 
         <main
@@ -209,6 +217,8 @@ export default function Chat() {
         <SettingsDialog
           apiKey={apiKey}
           keyRemembered={keyRemembered}
+          folder={folder}
+          onSaveFolder={saveFolder}
           conversationCount={conversations.length}
           onSaveApiKey={saveApiKey}
           onClearConversations={handleClearConversations}
